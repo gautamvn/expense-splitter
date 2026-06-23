@@ -1,3 +1,8 @@
+import {
+  calculateBalances as calculateBalancesForState,
+  calculateSettlements as calculateSettlementsForBalances,
+} from "./trip-math.js";
+
 const STORAGE_KEY = "trip-split-state-v1";
 const TRIP_KEY = "trip-split-active-trip-v1";
 
@@ -169,52 +174,11 @@ function emptyState(text = "Nothing here yet.") {
 }
 
 function calculateBalances() {
-  const balances = Object.fromEntries(state.people.map((person) => [person.id, 0]));
-
-  for (const expense of state.expenses) {
-    if (!balances.hasOwnProperty(expense.payerId) || expense.splitWith.length === 0) continue;
-    balances[expense.payerId] += expense.amount;
-    const share = expense.amount / expense.splitWith.length;
-    for (const personId of expense.splitWith) {
-      if (balances.hasOwnProperty(personId)) balances[personId] -= share;
-    }
-  }
-
-  return balances;
+  return calculateBalancesForState(state);
 }
 
 function calculateSettlements(balances) {
-  const debtors = [];
-  const creditors = [];
-
-  for (const [personId, balance] of Object.entries(balances)) {
-    if (balance < -0.005) debtors.push({ personId, amount: -balance });
-    if (balance > 0.005) creditors.push({ personId, amount: balance });
-  }
-
-  const settlements = [];
-  let debtorIndex = 0;
-  let creditorIndex = 0;
-
-  while (debtorIndex < debtors.length && creditorIndex < creditors.length) {
-    const debtor = debtors[debtorIndex];
-    const creditor = creditors[creditorIndex];
-    const amount = Math.min(debtor.amount, creditor.amount);
-
-    settlements.push({
-      from: debtor.personId,
-      to: creditor.personId,
-      amount,
-    });
-
-    debtor.amount -= amount;
-    creditor.amount -= amount;
-
-    if (debtor.amount < 0.005) debtorIndex += 1;
-    if (creditor.amount < 0.005) creditorIndex += 1;
-  }
-
-  return settlements;
+  return calculateSettlementsForBalances(balances);
 }
 
 function personName(id) {
