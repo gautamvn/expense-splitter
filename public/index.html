@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Trip Split</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section id="tripGate" class="gate-panel" aria-label="Choose trip">
+        <div>
+          <p class="eyebrow">Trip Split</p>
+          <h1>Open A Trip</h1>
+        </div>
+        <div class="trip-forms">
+          <form id="openTripForm" class="trip-form">
+            <h2>Open trip</h2>
+            <label>
+              <span>Trip password</span>
+              <input id="openTripPassword" autocomplete="off" placeholder="Enter your group password" required />
+            </label>
+            <button type="submit" class="primary-button">Open</button>
+          </form>
+          <form id="createTripForm" class="trip-form">
+            <h2>Create trip</h2>
+            <label>
+              <span>Trip password</span>
+              <input id="createTripPassword" autocomplete="off" placeholder="Share this with your group" required />
+            </label>
+            <label>
+              <span>Currency</span>
+              <select id="createCurrency" required>
+                <option value="$">USD $</option>
+                <option value="S$">SGD S$</option>
+                <option value="€">EUR €</option>
+                <option value="£">GBP £</option>
+                <option value="₹">INR ₹</option>
+                <option value="¥">JPY ¥</option>
+                <option value="A$">AUD A$</option>
+                <option value="C$">CAD C$</option>
+              </select>
+            </label>
+            <label>
+              <span>Participants</span>
+              <textarea id="createParticipants" placeholder="One name per line or comma-separated" required></textarea>
+            </label>
+            <button type="submit" class="primary-button">Create</button>
+          </form>
+        </div>
+      </section>
+
+      <div id="tripApp" class="hidden">
+      <section class="topbar" aria-label="Trip summary">
+        <div>
+          <p class="eyebrow">Trip Split</p>
+          <h1>Expenses</h1>
+          <p id="tripBadge" class="trip-badge"></p>
+        </div>
+        <div class="top-actions">
+          <div class="currency-control">
+            <span>Currency</span>
+            <strong id="currencyDisplay">$</strong>
+          </div>
+          <button id="switchTripButton" class="ghost-button" type="button">Switch trip</button>
+        </div>
+      </section>
+
+      <section class="summary-grid" aria-label="Current totals">
+        <article class="metric">
+          <span>Total spent</span>
+          <strong id="totalSpent">$0.00</strong>
+        </article>
+        <article class="metric">
+          <span>People</span>
+          <strong id="peopleCount">0</strong>
+        </article>
+        <article class="metric">
+          <span>Expenses</span>
+          <strong id="expenseCount">0</strong>
+        </article>
+      </section>
+
+      <section class="workspace">
+        <div class="panel expense-panel">
+          <div class="panel-heading">
+            <h2>Add expense</h2>
+          </div>
+          <form id="expenseForm" class="expense-form">
+            <label>
+              <span>Description</span>
+              <input id="descriptionInput" autocomplete="off" placeholder="Dinner, cab, hotel" required />
+            </label>
+            <div class="form-row">
+              <label>
+                <span>Amount <b id="amountCurrencyLabel">$</b></span>
+                <input id="amountInput" inputmode="decimal" placeholder="0.00" min="0.01" step="0.01" type="number" required />
+              </label>
+              <label>
+                <span>Paid by</span>
+                <select id="payerSelect" required></select>
+              </label>
+            </div>
+            <fieldset>
+              <legend>Who participated</legend>
+              <div id="splitWithList" class="check-grid"></div>
+            </fieldset>
+            <button type="submit" class="primary-button">Add expense</button>
+          </form>
+        </div>
+
+        <div class="panel">
+          <div class="panel-heading">
+            <h2>Balances</h2>
+            <button id="copySummaryButton" class="ghost-button" type="button">Copy summary</button>
+          </div>
+          <div id="balancesList" class="balance-list"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-heading">
+            <h2>Settle up</h2>
+          </div>
+          <div id="settlementsList" class="settlement-list"></div>
+        </div>
+      </section>
+
+      <section class="ledger-section">
+        <div class="panel-heading">
+          <h2>Ledger</h2>
+          <button id="downloadCsvButton" class="ghost-button" type="button">Download CSV</button>
+        </div>
+        <div id="expenseList" class="expense-list"></div>
+      </section>
+      </div>
+    </main>
+
+    <template id="emptyStateTemplate">
+      <p class="empty-state">Nothing here yet.</p>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
