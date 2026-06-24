@@ -392,7 +392,10 @@ function renderBalances() {
     const row = document.createElement("div");
     row.className = "balance-row";
     row.innerHTML = `
-      <span class="person-name"></span>
+      <div>
+        <span class="person-name"></span>
+        <span class="row-caption">${balance >= 0 ? "is owed" : "owes"}</span>
+      </div>
       <strong class="balance-value ${balance >= 0 ? "positive" : "negative"}">${formatMoney(balance, state.currency, { signed: true })}</strong>
     `;
     row.querySelector(".person-name").textContent = person.name;
@@ -415,8 +418,11 @@ function renderSettlements(balances) {
     const row = document.createElement("div");
     row.className = "settlement-row";
     row.innerHTML = `
-      <span><strong></strong> pays <strong></strong></span>
-      <strong>${formatMoney(settlement.amount, state.currency)}</strong>
+      <div>
+        <span><strong></strong> pays <strong></strong></span>
+        <span class="row-caption">Suggested payment</span>
+      </div>
+      <strong class="settlement-amount">${formatMoney(settlement.amount, state.currency)}</strong>
     `;
     const names = row.querySelectorAll("strong");
     names[0].textContent = personName(settlement.from);
@@ -449,16 +455,20 @@ function renderExpenses() {
 
     row.innerHTML = `
       <div>
-        <div class="expense-title"></div>
+        <div class="expense-title-line">
+          <span class="expense-title"></span>
+          <span class="status-chip expense-fx-chip"></span>
+        </div>
         <div class="expense-meta"></div>
         <div class="expense-submeta"></div>
       </div>
       <div class="row-actions">
-        <button class="ghost-button edit-expense" type="button">Edit</button>
+        <button class="secondary-button edit-expense" type="button">Edit</button>
         <button class="delete-expense" type="button" title="Delete expense">×</button>
       </div>
     `;
-    row.querySelector(".expense-title").textContent = `${expense.description} · ${convertedText}`;
+    row.querySelector(".expense-title").textContent = expense.description;
+    row.querySelector(".expense-fx-chip").textContent = convertedMinor === null ? "FX pending" : convertedText;
     row.querySelector(".expense-meta").textContent = `${expense.date} · paid by ${personName(expense.payerId)} · split: ${splitNames}`;
     row.querySelector(".expense-submeta").textContent = fxText;
     row.querySelector(".edit-expense").addEventListener("click", () => startEditExpense(expense.id));

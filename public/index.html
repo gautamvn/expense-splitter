@@ -10,52 +10,85 @@
   <body>
     <main class="app-shell">
       <section id="tripGate" class="gate-panel" aria-label="Choose trip">
-        <div class="gate-copy">
-          <p class="eyebrow">Trip Split</p>
-          <h1>Split Travel Costs Without Accounts</h1>
-          <p>One private trip link, quick expense entry, currency-aware balances.</p>
+        <div class="gate-shell">
+          <div class="gate-copy">
+            <p class="eyebrow">Trip Split</p>
+            <h1>Shared Travel Expenses, Settled Cleanly</h1>
+            <p class="lead">Create a private trip link, add expenses in any supported currency, and see who owes whom without accounts or spreadsheet theatre.</p>
+            <div class="trust-strip" aria-label="Product highlights">
+              <span>Private link</span>
+              <span>Daily FX</span>
+              <span>No signups</span>
+            </div>
+          </div>
+
+          <aside class="preview-panel" aria-label="Trip Split preview">
+            <div class="preview-header">
+              <span>Bali weekend</span>
+              <strong>S$1,248.40</strong>
+            </div>
+            <div class="preview-bars" aria-hidden="true">
+              <span style="--bar: 78%"></span>
+              <span style="--bar: 42%"></span>
+              <span style="--bar: 58%"></span>
+            </div>
+            <div class="preview-row">
+              <span>Dinner · EUR 144.00</span>
+              <strong>Ready</strong>
+            </div>
+            <div class="preview-row">
+              <span>Hotel · SGD 820.00</span>
+              <strong>Split 4 ways</strong>
+            </div>
+            <div class="preview-settle">
+              <span>Next payment</span>
+              <strong>Jaya pays Gautam S$86.20</strong>
+            </div>
+          </aside>
         </div>
 
-        <div class="trip-forms">
-          <form id="createTripForm" class="trip-form">
-            <h2>Create trip</h2>
-            <label>
+        <div class="trip-forms" aria-label="Trip access">
+          <form id="createTripForm" class="panel trip-form">
+            <div class="panel-kicker">Start</div>
+            <h2>Create a trip</h2>
+            <label class="field">
               <span>Trip name</span>
               <input id="createTripName" autocomplete="off" placeholder="Bali weekend" required />
             </label>
-            <label>
+            <label class="field">
               <span>Default currency</span>
               <select id="createCurrency" required></select>
             </label>
-            <label>
+            <label class="field">
               <span>Participants</span>
               <textarea id="createParticipants" placeholder="One name per line or comma-separated" required></textarea>
             </label>
             <button type="submit" class="primary-button">Create private link</button>
           </form>
 
-          <form id="openTripForm" class="trip-form">
-            <h2>Open trip</h2>
-            <label>
+          <form id="openTripForm" class="panel trip-form compact">
+            <div class="panel-kicker">Return</div>
+            <h2>Open a trip</h2>
+            <label class="field">
               <span>Trip link or old trip password</span>
               <input id="openTripInput" autocomplete="off" placeholder="Paste a trip link" required />
             </label>
-            <button type="submit" class="primary-button">Open</button>
+            <button type="submit" class="secondary-button">Open trip</button>
             <p class="form-note">Old password trips still open here. New trips use unguessable URLs.</p>
           </form>
         </div>
       </section>
 
       <div id="tripApp" class="hidden">
-        <section class="topbar" aria-label="Trip summary">
+        <section class="topbar app-header" aria-label="Trip summary">
           <div>
             <p class="eyebrow">Trip Split</p>
             <h1 id="tripTitle">Trip</h1>
             <p id="statusText" class="trip-badge"></p>
           </div>
           <div class="top-actions">
-            <button id="copyLinkButton" class="ghost-button" type="button">Copy link</button>
-            <button id="switchTripButton" class="ghost-button" type="button">Switch trip</button>
+            <button id="copyLinkButton" class="secondary-button" type="button">Copy link</button>
+            <button id="switchTripButton" class="secondary-button" type="button">Switch trip</button>
           </div>
         </section>
 
@@ -77,35 +110,38 @@
         <section id="pendingFxPanel" class="notice hidden">
           <strong>FX lookup pending</strong>
           <span>Expenses without rates stay in the ledger but are left out of balances until retry succeeds.</span>
-          <button id="retryFxButton" class="ghost-button" type="button">Retry</button>
+          <button id="retryFxButton" class="secondary-button" type="button">Retry</button>
         </section>
 
         <section class="workspace">
           <div class="panel expense-panel">
             <div class="panel-heading">
-              <h2 id="expenseFormTitle">Add expense</h2>
-              <button id="cancelEditButton" class="ghost-button hidden" type="button">Cancel edit</button>
+              <div>
+                <div class="panel-kicker">Capture</div>
+                <h2 id="expenseFormTitle">Add expense</h2>
+              </div>
+              <button id="cancelEditButton" class="secondary-button hidden" type="button">Cancel edit</button>
             </div>
             <form id="expenseForm" class="expense-form">
-              <label>
+              <label class="field">
                 <span>Description</span>
                 <input id="descriptionInput" autocomplete="off" placeholder="Dinner, cab, hotel" required />
               </label>
               <div class="form-row three">
-                <label>
+                <label class="field">
                   <span>Amount</span>
                   <input id="amountInput" inputmode="decimal" placeholder="0.00" min="0.01" step="0.01" type="number" required />
                 </label>
-                <label>
+                <label class="field">
                   <span>Currency</span>
                   <select id="expenseCurrencySelect" required></select>
                 </label>
-                <label>
+                <label class="field">
                   <span>Date</span>
                   <input id="expenseDateInput" type="date" required />
                 </label>
               </div>
-              <label>
+              <label class="field">
                 <span>Paid by</span>
                 <select id="payerSelect" required></select>
               </label>
@@ -119,37 +155,46 @@
 
           <div class="panel">
             <div class="panel-heading">
-              <h2>Balances</h2>
-              <button id="copySummaryButton" class="ghost-button" type="button">Copy summary</button>
+              <div>
+                <div class="panel-kicker">Position</div>
+                <h2>Balances</h2>
+              </div>
+              <button id="copySummaryButton" class="secondary-button" type="button">Copy summary</button>
             </div>
             <div id="balancesList" class="balance-list"></div>
           </div>
 
           <div class="panel">
             <div class="panel-heading">
-              <h2>Settle up</h2>
+              <div>
+                <div class="panel-kicker">Next</div>
+                <h2>Settle up</h2>
+              </div>
             </div>
             <div id="settlementsList" class="settlement-list"></div>
           </div>
 
           <div class="panel">
             <div class="panel-heading">
-              <h2>Settings</h2>
+              <div>
+                <div class="panel-kicker">Trip</div>
+                <h2>Settings</h2>
+              </div>
             </div>
             <form id="settingsForm" class="settings-form">
-              <label>
+              <label class="field">
                 <span>Trip name</span>
                 <input id="tripNameInput" autocomplete="off" required />
               </label>
-              <label>
+              <label class="field">
                 <span>Default currency</span>
                 <select id="tripCurrencySelect" required></select>
               </label>
-              <label>
+              <label class="field">
                 <span>Add participant</span>
                 <div class="inline-field">
                   <input id="newParticipantInput" autocomplete="off" placeholder="Name" />
-                  <button id="addParticipantButton" class="ghost-button" type="button">Add</button>
+                  <button id="addParticipantButton" class="secondary-button" type="button">Add</button>
                 </div>
               </label>
               <div id="peopleEditor" class="people-editor"></div>
@@ -160,8 +205,11 @@
 
         <section class="ledger-section">
           <div class="panel-heading">
-            <h2>Ledger</h2>
-            <button id="downloadCsvButton" class="ghost-button" type="button">Download CSV</button>
+            <div>
+              <div class="panel-kicker">Audit</div>
+              <h2>Ledger</h2>
+            </div>
+            <button id="downloadCsvButton" class="secondary-button" type="button">Download CSV</button>
           </div>
           <div id="expenseList" class="expense-list"></div>
         </section>

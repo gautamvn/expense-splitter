@@ -55,6 +55,7 @@ Open `http://localhost:4173/?local=1`. This uses localStorage and skips the remo
 
 - `ROBUST_WEBSITE_PLAN.md` - product scope, multi-currency/FX requirements, robustness plan, phases, and open decisions.
 - `END_TO_END_DESIGN.md` - target UX, screen flows, wireframes, data rules, API sketch, and acceptance criteria.
+- `DESIGN_SYSTEM.md` - visual principles, tokens, components, and layout rules for the public UI.
 
 ## Current Product Direction
 
