@@ -1,6 +1,6 @@
 # Trip Split
 
-Trip Split is a small shared trip expense web app. The current implementation uses private high-entropy trip links with Vercel Blob-backed JSON state.
+Trip Split is a small shared trip expense web app. The current implementation uses private high-entropy trip links with Postgres-backed state.
 
 This repository also contains product and design specs for evolving it into a minimal, robust, no-account shared trip expense app with proper multi-currency support.
 
@@ -8,8 +8,9 @@ This repository also contains product and design specs for evolving it into a mi
 
 - Static frontend in `public/`.
 - Vercel serverless state API in `api/state.js`.
+- Postgres persistence helpers and schema bootstrapping in `api/db.js`.
 - Vercel serverless FX API in `api/fx.js`.
-- Hourly JSON backup script in `scripts/backup-json.mjs`.
+- One-time Blob-to-Postgres import script in `scripts/migrate-blob-to-postgres.mjs`.
 - Vercel routing in `vercel.json`.
 - Currency-aware math in `public/trip-math.js`.
 
@@ -24,16 +25,16 @@ This repository also contains product and design specs for evolving it into a mi
 - Trip default currency changes recalculate displayed totals from original amounts without rewriting them.
 - Server writes validate and sanitize payloads.
 - State writes use a version check to catch stale browser tabs before overwriting newer data.
-- Previous trip JSON is copied to a timestamped backup path before each overwrite.
+- Trip state is stored in normalized Postgres tables: trips, participants, expenses, expense splits, and FX rates.
 - CSV export includes original amount/currency, converted amount, trip currency, FX date, and FX rate.
 - Settlement payments are suggested and copyable, not tracked as paid.
 
 ## Safety Notes
 
-- Do not commit `.env*`, `.vercel/`, `backups/`, `node_modules/`, or live trip JSON.
+- Do not commit `.env*`, `.vercel/`, `backups/`, `node_modules/`, database dumps, or live trip JSON.
 - Treat production trip data as live user data.
 - Before any migration or production data operation, take a fresh timestamped backup.
-- The current persistence layer is still JSON-on-Blob. Move to a relational database only after a staged import, verification pass, and rollback plan.
+- The current production trip was originally stored in Vercel Blob. Use the migration script once after `DATABASE_URL` is connected.
 
 ## Local Development
 
@@ -41,6 +42,18 @@ Run tests:
 
 ```sh
 npm test
+```
+
+Run DB-backed integration tests after connecting Neon/Postgres:
+
+```sh
+DATABASE_URL="postgres://..." npm test
+```
+
+Import the current active Blob trip into Postgres:
+
+```sh
+npm run db:migrate:blob
 ```
 
 Run a quick static UI smoke test without Vercel APIs:

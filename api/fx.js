@@ -1,4 +1,4 @@
-import { list, put } from "@vercel/blob";
+import { cacheFxRate, readCachedFxRate } from "./db.js";
 
 const currencies = new Set(["SGD", "USD", "EUR", "GBP", "INR", "JPY", "AUD", "CAD", "CHF", "THB", "IDR", "MYR"]);
 
@@ -12,27 +12,6 @@ function cleanDate(value) {
   const today = new Date().toISOString().slice(0, 10);
   const date = /^\d{4}-\d{2}-\d{2}$/.test(String(value || "")) ? String(value) : today;
   return date > today ? today : date;
-}
-
-function keyForRate(date, from, to) {
-  return `fx/${date}/${from}-${to}.json`;
-}
-
-async function getCachedRate(key) {
-  const result = await list({ prefix: key, limit: 1 });
-  const blob = result.blobs.find((item) => item.pathname === key);
-  if (!blob) return null;
-  const response = await fetch(blob.downloadUrl || blob.url, { cache: "no-store" });
-  if (!response.ok) return null;
-  return response.json();
-}
-
-async function cacheRate(key, payload) {
-  await put(key, JSON.stringify(payload), {
-    access: "public",
-    allowOverwrite: true,
-    contentType: "application/json",
-  });
 }
 
 async function fetchFrankfurterRate(date, from, to) {
@@ -81,15 +60,14 @@ export default async function handler(req, res) {
       return;
     }
 
-    const key = keyForRate(date, from, to);
-    const cached = await getCachedRate(key);
+    const cached = await readCachedFxRate(date, from, to);
     if (cached) {
       res.status(200).json({ ...cached, cached: true });
       return;
     }
 
     const rate = await fetchFrankfurterRate(date, from, to);
-    await cacheRate(key, rate);
+    await cacheFxRate(rate);
     res.status(200).json(rate);
   } catch (error) {
     sendError(res, error);
