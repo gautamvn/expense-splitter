@@ -15,6 +15,7 @@ import {
 
 const STORAGE_KEY = "trip-split-state-v2";
 const TRIP_KEY = "trip-split-active-trip-v2";
+const EXPENSES_PER_PAGE = 10;
 
 const defaultState = {
   schemaVersion: 2,
@@ -29,6 +30,8 @@ let state = structuredClone(defaultState);
 let tripId = null;
 let editingExpenseId = null;
 let isSaving = false;
+let expensePage = 1;
+let activeView = "dashboard";
 const useRemoteState = location.protocol.startsWith("http") && !new URLSearchParams(location.search).has("local");
 
 const els = {
@@ -44,7 +47,13 @@ const els = {
   copyLinkButton: document.querySelector("#copyLinkButton"),
   tripTitle: document.querySelector("#tripTitle"),
   statusText: document.querySelector("#statusText"),
+  summaryGrid: document.querySelector(".summary-grid"),
+  dashboardView: document.querySelector("#dashboardView"),
+  settingsView: document.querySelector("#settingsView"),
+  openSettingsButton: document.querySelector("#openSettingsButton"),
+  backToDashboardButton: document.querySelector("#backToDashboardButton"),
   pendingFxPanel: document.querySelector("#pendingFxPanel"),
+  pendingMetric: document.querySelector("#pendingMetric"),
   retryFxButton: document.querySelector("#retryFxButton"),
   expenseForm: document.querySelector("#expenseForm"),
   expenseFormTitle: document.querySelector("#expenseFormTitle"),
@@ -59,6 +68,10 @@ const els = {
   balancesList: document.querySelector("#balancesList"),
   settlementsList: document.querySelector("#settlementsList"),
   expenseList: document.querySelector("#expenseList"),
+  ledgerPagination: document.querySelector("#ledgerPagination"),
+  ledgerPageText: document.querySelector("#ledgerPageText"),
+  previousExpensesButton: document.querySelector("#previousExpensesButton"),
+  nextExpensesButton: document.querySelector("#nextExpensesButton"),
   totalSpent: document.querySelector("#totalSpent"),
   peopleCount: document.querySelector("#peopleCount"),
   pendingCount: document.querySelector("#pendingCount"),
@@ -81,12 +94,6 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
-async function hashPassword(password) {
-  const data = new TextEncoder().encode(password.trim());
-  const hash = await crypto.subtle.digest("SHA-256", data);
-  return [...new Uint8Array(hash)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
 function localStorageKey(id = tripId) {
   return id ? `${STORAGE_KEY}:${id}` : STORAGE_KEY;
 }
@@ -104,14 +111,15 @@ function populateCurrencySelect(select, selected = DEFAULT_CURRENCY) {
 }
 
 function parseParticipantNames(value) {
-  return [
-    ...new Set(
-      value
-        .split(/[\n,]/)
-        .map((name) => name.trim())
-        .filter(Boolean),
-    ),
-  ];
+  const seen = new Set();
+  const names = [];
+  for (const name of value.split(/[\n,]/).map((item) => item.trim()).filter(Boolean)) {
+    const key = name.toLocaleLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    names.push(name);
+  }
+  return names;
 }
 
 function tripUrl(id = tripId) {
@@ -124,11 +132,14 @@ function tripUrl(id = tripId) {
 
 function tripIdFromInput(value) {
   const clean = value.trim();
+  const isLegacyPasswordHash = (id) => /^[a-f0-9]{64}$/i.test(id);
+  const isPrivateTripId = (id) => /^[a-zA-Z0-9_-]{24,96}$/.test(id) && !isLegacyPasswordHash(id);
   try {
     const url = new URL(clean);
-    return url.searchParams.get("trip") || url.hash.replace(/^#trip=/, "");
+    const id = url.searchParams.get("trip") || url.hash.replace(/^#trip=/, "");
+    return isPrivateTripId(id) ? id : null;
   } catch {
-    return /^[a-zA-Z0-9_-]{24,96}$|^[a-f0-9]{64}$/.test(clean) ? clean : null;
+    return isPrivateTripId(clean) ? clean : null;
   }
 }
 
@@ -262,13 +273,14 @@ async function openTrip(value) {
     return;
   }
 
-  const legacyTripId = await hashPassword(value);
-  await openTripFromId(legacyTripId);
+  throw new Error("Paste the private trip link.");
 }
 
 function showTripGate() {
   tripId = null;
   editingExpenseId = null;
+  expensePage = 1;
+  activeView = "dashboard";
   state = structuredClone(defaultState);
   localStorage.removeItem(TRIP_KEY);
   history.replaceState(null, "", location.pathname);
@@ -280,7 +292,22 @@ function showTripGate() {
 function showTripApp() {
   els.tripGate.classList.add("hidden");
   els.tripApp.classList.remove("hidden");
+  showDashboard();
   render();
+}
+
+function showDashboard() {
+  activeView = "dashboard";
+  els.dashboardView.classList.remove("hidden");
+  els.settingsView.classList.add("hidden");
+}
+
+function showSettings() {
+  activeView = "settings";
+  els.dashboardView.classList.add("hidden");
+  els.settingsView.classList.remove("hidden");
+  renderSummary();
+  els.tripNameInput.focus();
 }
 
 function emptyState(text = "Nothing here yet.") {
@@ -436,22 +463,32 @@ function renderExpenses() {
 
   if (state.expenses.length === 0) {
     els.expenseList.append(emptyState("No expenses logged yet."));
+    els.ledgerPagination.classList.add("hidden");
     return;
   }
 
-  for (const expense of [...state.expenses].sort((a, b) => String(b.date).localeCompare(String(a.date)))) {
+  const sortedExpenses = [...state.expenses].sort((a, b) => {
+    const byDate = String(b.date).localeCompare(String(a.date));
+    if (byDate !== 0) return byDate;
+    return String(b.createdAt || "").localeCompare(String(a.createdAt || ""));
+  });
+  const pageCount = Math.max(1, Math.ceil(sortedExpenses.length / EXPENSES_PER_PAGE));
+  expensePage = Math.min(Math.max(expensePage, 1), pageCount);
+  const pageExpenses = sortedExpenses.slice((expensePage - 1) * EXPENSES_PER_PAGE, expensePage * EXPENSES_PER_PAGE);
+
+  for (const expense of pageExpenses) {
     const row = document.createElement("article");
     row.className = "expense-row";
     const convertedMinor = convertedAmountMinor(expense, state.currency);
     const splitNames = expense.splitWith.map(personName).join(", ");
     const originalText = formatMoney(expense.amountMinor, expense.currency);
-    const convertedText = convertedMinor === null ? "FX pending" : `${originalText} -> ${formatMoney(convertedMinor, state.currency)}`;
-    const fxText =
-      expense.currency === state.currency
-        ? "same currency"
-        : expense.fx
-          ? `FX ${expense.fx.date || expense.date} @ ${Number(expense.fx.rate).toFixed(6)}`
-          : "FX pending";
+    const convertedText =
+      convertedMinor === null
+        ? "Awaiting FX rates"
+        : expense.currency === state.currency
+          ? originalText
+          : `${originalText} -> ${formatMoney(convertedMinor, state.currency)}`;
+    const fxText = expense.currency === state.currency ? "" : expense.fx ? `FX ${expense.fx.date || expense.date} @ ${Number(expense.fx.rate).toFixed(6)}` : "Awaiting FX rates";
 
     row.innerHTML = `
       <div>
@@ -468,9 +505,11 @@ function renderExpenses() {
       </div>
     `;
     row.querySelector(".expense-title").textContent = expense.description;
-    row.querySelector(".expense-fx-chip").textContent = convertedMinor === null ? "FX pending" : convertedText;
     row.querySelector(".expense-meta").textContent = `${expense.date} · paid by ${personName(expense.payerId)} · split: ${splitNames}`;
-    row.querySelector(".expense-submeta").textContent = fxText;
+    row.querySelector(".expense-fx-chip").textContent = convertedText;
+    const submeta = row.querySelector(".expense-submeta");
+    submeta.textContent = fxText;
+    submeta.classList.toggle("hidden", !fxText);
     row.querySelector(".edit-expense").addEventListener("click", () => startEditExpense(expense.id));
     row.querySelector(".delete-expense").addEventListener("click", async () => {
       if (!confirm(`Delete "${expense.description}"?`)) return;
@@ -480,6 +519,11 @@ function renderExpenses() {
     });
     els.expenseList.append(row);
   }
+
+  els.ledgerPagination.classList.toggle("hidden", pageCount <= 1);
+  els.ledgerPageText.textContent = `Page ${expensePage} of ${pageCount}`;
+  els.previousExpensesButton.disabled = expensePage <= 1;
+  els.nextExpensesButton.disabled = expensePage >= pageCount;
 }
 
 function renderSummary() {
@@ -489,10 +533,16 @@ function renderSummary() {
   els.totalSpent.textContent = formatMoney(calculateTotalMinor(state), state.currency);
   els.peopleCount.textContent = state.people.length;
   els.pendingCount.textContent = pending;
+  els.summaryGrid.classList.toggle("has-pending", pending > 0);
+  els.pendingMetric.classList.toggle("hidden", pending === 0);
   els.pendingFxPanel.classList.toggle("hidden", pending === 0);
   els.tripNameInput.value = state.name || "";
   populateCurrencySelect(els.tripCurrencySelect, state.currency);
-  populateCurrencySelect(els.expenseCurrencySelect, els.expenseCurrencySelect.value || state.currency);
+  if (!editingExpenseId) {
+    populateCurrencySelect(els.expenseCurrencySelect, state.currency);
+  } else {
+    populateCurrencySelect(els.expenseCurrencySelect, els.expenseCurrencySelect.value || state.currency);
+  }
 }
 
 function renderExpenseForm() {
@@ -563,6 +613,7 @@ async function upsertExpense() {
     state.expenses = state.expenses.map((item) => (item.id === existing.id ? expense : item));
   } else {
     state.expenses.push(expense);
+    expensePage = 1;
   }
 
   await saveState();
@@ -613,6 +664,10 @@ els.openTripForm.addEventListener("submit", async (event) => {
 
 els.switchTripButton.addEventListener("click", showTripGate);
 
+els.openSettingsButton.addEventListener("click", showSettings);
+
+els.backToDashboardButton.addEventListener("click", showDashboard);
+
 els.copyLinkButton.addEventListener("click", async () => {
   await navigator.clipboard.writeText(tripUrl());
   copyButtonFeedback(els.copyLinkButton, "Copied");
@@ -645,6 +700,16 @@ els.retryFxButton.addEventListener("click", async () => {
   render();
 });
 
+els.previousExpensesButton.addEventListener("click", () => {
+  expensePage -= 1;
+  renderExpenses();
+});
+
+els.nextExpensesButton.addEventListener("click", () => {
+  expensePage += 1;
+  renderExpenses();
+});
+
 els.copySummaryButton.addEventListener("click", async () => {
   const balances = calculateBalances();
   const settlements = calculateSettlements(balances);
@@ -652,7 +717,7 @@ els.copySummaryButton.addEventListener("click", async () => {
   const lines = [
     `${state.name} summary`,
     `Total counted: ${formatMoney(calculateTotalMinor(state), state.currency)}`,
-    pending ? `FX pending: ${pending} expense${pending === 1 ? "" : "s"} excluded from balances` : "",
+    pending ? `Awaiting FX rates: ${pending} expense${pending === 1 ? "" : "s"} excluded from balances` : "",
     "",
     "Balances:",
     ...state.people.map((person) => `${person.name}: ${formatMoney(balances[person.id] || 0, state.currency, { signed: true })}`),
@@ -687,7 +752,7 @@ els.downloadCsvButton.addEventListener("click", () => {
       expense.description,
       fromMinorUnits(expense.amountMinor, expense.currency).toFixed(currencyFor(expense.currency).fractionDigits),
       expense.currency,
-      convertedMinor === null ? "FX pending" : fromMinorUnits(convertedMinor, state.currency).toFixed(currencyFor(state.currency).fractionDigits),
+      convertedMinor === null ? "Awaiting FX rates" : fromMinorUnits(convertedMinor, state.currency).toFixed(currencyFor(state.currency).fractionDigits),
       state.currency,
       expense.fx?.date || "",
       expense.fx?.rate || "",

@@ -22,7 +22,7 @@ Trip Split should feel like a polished shared finance tool: calm, fast, trustwor
   - `--color-brand`: primary action and focus.
   - `--color-positive`: owed-to-user / positive balances.
   - `--color-negative`: owes / negative balances.
-  - `--color-warning`: FX pending and retry states.
+  - `--color-warning`: awaiting FX rates and retry states.
 - Type:
   - System sans stack.
   - Hero: 48-76px on desktop, 36px on mobile.

@@ -15,11 +15,11 @@ This repository also contains product and design specs for evolving it into a mi
 
 ## Implemented Robustness
 
-- New trips receive random private URLs instead of human-chosen passwords.
-- Old password-based trips can still be opened from the trip gate.
+- Trips receive random private URLs instead of human-chosen identifiers.
+- Password-based trip lookup is deprecated; trips open only through private links.
 - Expenses store original amount, original currency, date, payer, split participants, and the exact FX rate used.
 - FX rates are fetched through Frankfurter (`api.frankfurter.dev`) and cached in Vercel Blob by date and currency pair.
-- If FX lookup fails, the expense is saved as FX pending and excluded from balances until retry succeeds.
+- If FX lookup fails, the expense is marked as awaiting FX rates and excluded from balances until retry succeeds.
 - FX rates are not user-editable.
 - Trip default currency changes recalculate displayed totals from original amounts without rewriting them.
 - Server writes validate and sanitize payloads.

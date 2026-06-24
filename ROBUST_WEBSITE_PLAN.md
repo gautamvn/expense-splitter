@@ -73,7 +73,7 @@ Goal: turn Trip Split from a personal utility into a polished, reliable, shareab
   - Expense detail/edit view: original currency, FX date, FX rate, converted value.
   - Totals: always in trip default currency.
 - Allow manual FX override only as an advanced escape hatch inside expense edit.
-- If FX lookup fails, allow saving with a clear "FX pending" state and retry later, or require a manual rate before saving. Prefer not silently guessing.
+- If FX lookup fails, allow saving with a clear "Awaiting FX rates" state and retry later, or require a manual rate before saving. Prefer not silently guessing.
 - Cache FX rates by date and currency pair.
 - Make rounding rules explicit:
   - Store money in minor units where possible.
@@ -248,7 +248,7 @@ Goal: turn Trip Split from a personal utility into a polished, reliable, shareab
 
 - Read-only links: later.
 - Unequal splits: after the core multi-currency model is stable.
-- FX source: Frankfurter (`api.frankfurter.dev`) for no-key daily and historical rates. Fallback is an explicit `FX pending` state with retry; do not guess rates.
+- FX source: Frankfurter (`api.frankfurter.dev`) for no-key daily and historical rates. Fallback is an explicit `Awaiting FX rates` state with retry; do not guess rates.
 - FX rates: not user-editable.
 - Settlement payments: suggested and copied only, not tracked as paid.
 - Old trips: left at their URLs for now.

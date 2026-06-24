@@ -39,7 +39,8 @@ function token() {
 }
 
 function validateTripId(value) {
-  if (typeof value !== "string" || !/^[a-zA-Z0-9_-]{24,96}$|^[a-f0-9]{64}$/.test(value)) {
+  const isLegacyPasswordHash = typeof value === "string" && /^[a-f0-9]{64}$/i.test(value);
+  if (typeof value !== "string" || isLegacyPasswordHash || !/^[a-zA-Z0-9_-]{24,96}$/.test(value)) {
     throw Object.assign(new Error("Missing or invalid trip id"), { statusCode: 400 });
   }
   return value;
