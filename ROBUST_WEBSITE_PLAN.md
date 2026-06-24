@@ -246,10 +246,9 @@ Goal: turn Trip Split from a personal utility into a polished, reliable, shareab
 
 ## Open Decisions
 
-- Should read-only links be in v1 or later?
-- Should unequal splits wait until after multi-currency?
-- Which FX source should be used, and what is the fallback if it is unavailable?
-- Should FX rates be editable by default or hidden under advanced edit?
-- Should settlement payments be trackable, or just suggested and copied?
-- Should old trips be archiveable or simply left at their URLs?
-
+- Read-only links: later.
+- Unequal splits: after the core multi-currency model is stable.
+- FX source: Frankfurter (`api.frankfurter.dev`) for no-key daily and historical rates. Fallback is an explicit `FX pending` state with retry; do not guess rates.
+- FX rates: not user-editable.
+- Settlement payments: suggested and copied only, not tracked as paid.
+- Old trips: left at their URLs for now.

@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vercel dev",
+    "dev": "npx vercel dev",
+    "dev:local": "python3 -m http.server 4173 --directory public",
     "test": "node --test"
   },
   "dependencies": {

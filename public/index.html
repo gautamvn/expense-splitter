@@ -3,135 +3,168 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
     <title>Trip Split</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <main class="app-shell">
       <section id="tripGate" class="gate-panel" aria-label="Choose trip">
-        <div>
+        <div class="gate-copy">
           <p class="eyebrow">Trip Split</p>
-          <h1>Open A Trip</h1>
+          <h1>Split Travel Costs Without Accounts</h1>
+          <p>One private trip link, quick expense entry, currency-aware balances.</p>
         </div>
+
         <div class="trip-forms">
-          <form id="openTripForm" class="trip-form">
-            <h2>Open trip</h2>
-            <label>
-              <span>Trip password</span>
-              <input id="openTripPassword" autocomplete="off" placeholder="Enter your group password" required />
-            </label>
-            <button type="submit" class="primary-button">Open</button>
-          </form>
           <form id="createTripForm" class="trip-form">
             <h2>Create trip</h2>
             <label>
-              <span>Trip password</span>
-              <input id="createTripPassword" autocomplete="off" placeholder="Share this with your group" required />
+              <span>Trip name</span>
+              <input id="createTripName" autocomplete="off" placeholder="Bali weekend" required />
             </label>
             <label>
-              <span>Currency</span>
-              <select id="createCurrency" required>
-                <option value="$">USD $</option>
-                <option value="S$">SGD S$</option>
-                <option value="€">EUR €</option>
-                <option value="£">GBP £</option>
-                <option value="₹">INR ₹</option>
-                <option value="¥">JPY ¥</option>
-                <option value="A$">AUD A$</option>
-                <option value="C$">CAD C$</option>
-              </select>
+              <span>Default currency</span>
+              <select id="createCurrency" required></select>
             </label>
             <label>
               <span>Participants</span>
               <textarea id="createParticipants" placeholder="One name per line or comma-separated" required></textarea>
             </label>
-            <button type="submit" class="primary-button">Create</button>
+            <button type="submit" class="primary-button">Create private link</button>
+          </form>
+
+          <form id="openTripForm" class="trip-form">
+            <h2>Open trip</h2>
+            <label>
+              <span>Trip link or old trip password</span>
+              <input id="openTripInput" autocomplete="off" placeholder="Paste a trip link" required />
+            </label>
+            <button type="submit" class="primary-button">Open</button>
+            <p class="form-note">Old password trips still open here. New trips use unguessable URLs.</p>
           </form>
         </div>
       </section>
 
       <div id="tripApp" class="hidden">
-      <section class="topbar" aria-label="Trip summary">
-        <div>
-          <p class="eyebrow">Trip Split</p>
-          <h1>Expenses</h1>
-          <p id="tripBadge" class="trip-badge"></p>
-        </div>
-        <div class="top-actions">
-          <div class="currency-control">
-            <span>Currency</span>
-            <strong id="currencyDisplay">$</strong>
+        <section class="topbar" aria-label="Trip summary">
+          <div>
+            <p class="eyebrow">Trip Split</p>
+            <h1 id="tripTitle">Trip</h1>
+            <p id="statusText" class="trip-badge"></p>
           </div>
-          <button id="switchTripButton" class="ghost-button" type="button">Switch trip</button>
-        </div>
-      </section>
-
-      <section class="summary-grid" aria-label="Current totals">
-        <article class="metric">
-          <span>Total spent</span>
-          <strong id="totalSpent">$0.00</strong>
-        </article>
-        <article class="metric">
-          <span>People</span>
-          <strong id="peopleCount">0</strong>
-        </article>
-        <article class="metric">
-          <span>Expenses</span>
-          <strong id="expenseCount">0</strong>
-        </article>
-      </section>
-
-      <section class="workspace">
-        <div class="panel expense-panel">
-          <div class="panel-heading">
-            <h2>Add expense</h2>
+          <div class="top-actions">
+            <button id="copyLinkButton" class="ghost-button" type="button">Copy link</button>
+            <button id="switchTripButton" class="ghost-button" type="button">Switch trip</button>
           </div>
-          <form id="expenseForm" class="expense-form">
-            <label>
-              <span>Description</span>
-              <input id="descriptionInput" autocomplete="off" placeholder="Dinner, cab, hotel" required />
-            </label>
-            <div class="form-row">
+        </section>
+
+        <section class="summary-grid" aria-label="Current totals">
+          <article class="metric">
+            <span>Total counted</span>
+            <strong id="totalSpent">S$0.00</strong>
+          </article>
+          <article class="metric">
+            <span>People</span>
+            <strong id="peopleCount">0</strong>
+          </article>
+          <article class="metric">
+            <span>FX pending</span>
+            <strong id="pendingCount">0</strong>
+          </article>
+        </section>
+
+        <section id="pendingFxPanel" class="notice hidden">
+          <strong>FX lookup pending</strong>
+          <span>Expenses without rates stay in the ledger but are left out of balances until retry succeeds.</span>
+          <button id="retryFxButton" class="ghost-button" type="button">Retry</button>
+        </section>
+
+        <section class="workspace">
+          <div class="panel expense-panel">
+            <div class="panel-heading">
+              <h2 id="expenseFormTitle">Add expense</h2>
+              <button id="cancelEditButton" class="ghost-button hidden" type="button">Cancel edit</button>
+            </div>
+            <form id="expenseForm" class="expense-form">
               <label>
-                <span>Amount <b id="amountCurrencyLabel">$</b></span>
-                <input id="amountInput" inputmode="decimal" placeholder="0.00" min="0.01" step="0.01" type="number" required />
+                <span>Description</span>
+                <input id="descriptionInput" autocomplete="off" placeholder="Dinner, cab, hotel" required />
               </label>
+              <div class="form-row three">
+                <label>
+                  <span>Amount</span>
+                  <input id="amountInput" inputmode="decimal" placeholder="0.00" min="0.01" step="0.01" type="number" required />
+                </label>
+                <label>
+                  <span>Currency</span>
+                  <select id="expenseCurrencySelect" required></select>
+                </label>
+                <label>
+                  <span>Date</span>
+                  <input id="expenseDateInput" type="date" required />
+                </label>
+              </div>
               <label>
                 <span>Paid by</span>
                 <select id="payerSelect" required></select>
               </label>
+              <fieldset>
+                <legend>Split equally between</legend>
+                <div id="splitWithList" class="check-grid"></div>
+              </fieldset>
+              <button id="saveExpenseButton" type="submit" class="primary-button">Add expense</button>
+            </form>
+          </div>
+
+          <div class="panel">
+            <div class="panel-heading">
+              <h2>Balances</h2>
+              <button id="copySummaryButton" class="ghost-button" type="button">Copy summary</button>
             </div>
-            <fieldset>
-              <legend>Who participated</legend>
-              <div id="splitWithList" class="check-grid"></div>
-            </fieldset>
-            <button type="submit" class="primary-button">Add expense</button>
-          </form>
-        </div>
-
-        <div class="panel">
-          <div class="panel-heading">
-            <h2>Balances</h2>
-            <button id="copySummaryButton" class="ghost-button" type="button">Copy summary</button>
+            <div id="balancesList" class="balance-list"></div>
           </div>
-          <div id="balancesList" class="balance-list"></div>
-        </div>
 
-        <div class="panel">
-          <div class="panel-heading">
-            <h2>Settle up</h2>
+          <div class="panel">
+            <div class="panel-heading">
+              <h2>Settle up</h2>
+            </div>
+            <div id="settlementsList" class="settlement-list"></div>
           </div>
-          <div id="settlementsList" class="settlement-list"></div>
-        </div>
-      </section>
 
-      <section class="ledger-section">
-        <div class="panel-heading">
-          <h2>Ledger</h2>
-          <button id="downloadCsvButton" class="ghost-button" type="button">Download CSV</button>
-        </div>
-        <div id="expenseList" class="expense-list"></div>
-      </section>
+          <div class="panel">
+            <div class="panel-heading">
+              <h2>Settings</h2>
+            </div>
+            <form id="settingsForm" class="settings-form">
+              <label>
+                <span>Trip name</span>
+                <input id="tripNameInput" autocomplete="off" required />
+              </label>
+              <label>
+                <span>Default currency</span>
+                <select id="tripCurrencySelect" required></select>
+              </label>
+              <label>
+                <span>Add participant</span>
+                <div class="inline-field">
+                  <input id="newParticipantInput" autocomplete="off" placeholder="Name" />
+                  <button id="addParticipantButton" class="ghost-button" type="button">Add</button>
+                </div>
+              </label>
+              <div id="peopleEditor" class="people-editor"></div>
+              <button type="submit" class="primary-button">Save settings</button>
+            </form>
+          </div>
+        </section>
+
+        <section class="ledger-section">
+          <div class="panel-heading">
+            <h2>Ledger</h2>
+            <button id="downloadCsvButton" class="ghost-button" type="button">Download CSV</button>
+          </div>
+          <div id="expenseList" class="expense-list"></div>
+        </section>
       </div>
     </main>
 
