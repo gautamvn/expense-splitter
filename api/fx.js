@@ -36,10 +36,9 @@ async function cacheRate(key, payload) {
 }
 
 async function fetchFrankfurterRate(date, from, to) {
-  const url = new URL("https://api.frankfurter.dev/v2/rates");
-  url.searchParams.set("date", date);
+  const url = new URL(`https://api.frankfurter.dev/v1/${date}`);
   url.searchParams.set("base", from);
-  url.searchParams.set("quotes", to);
+  url.searchParams.set("symbols", to);
 
   const response = await fetch(url, { cache: "no-store" });
   if (!response.ok) throw new Error("FX provider unavailable");
