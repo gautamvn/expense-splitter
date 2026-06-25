@@ -1,184 +1,117 @@
-# Trip Split End-To-End Design
+# Trip Split Product Design
 
-This document describes the target product experience for a minimal, robust, no-account Trip Split web app. It is a design and product spec only; it is not an implementation plan for this exact codebase yet.
+This document describes the current product behavior and the intended near-term shape of Trip Split.
 
 ## Product Shape
 
-Trip Split is a private-link web app for friend groups on trips. A person creates a trip, shares the unique trip URL, everyone adds expenses, and the app shows balances and suggested settlement payments in the trip's default currency.
+Trip Split is a private-link web app for friend groups on trips. One person creates a trip, shares the URL, everyone adds expenses, and the app shows balances plus suggested settlement payments in the trip's default currency.
 
-The product should feel simple enough that a friend can open it from WhatsApp or Telegram and add an expense without explanation.
+The product should be simple enough to open from a chat app and use without explanation.
 
 ## Core Constraints
 
 - No user accounts.
-- Unique URL per trip.
+- No passwords.
+- One high-entropy private URL per trip.
 - Anyone with the edit URL can edit the trip.
-- Optional read-only URL later.
-- No notes.
-- No attachments.
-- No receipt uploads.
-- No social/comment features.
-- Multi-currency expenses are supported from the start of the robust version.
-- Original expense amounts and currencies are never rewritten.
+- Participants are trip-local names, not user identities.
+- No notes, comments, attachments, or receipt uploads.
+- Multi-currency expenses are supported.
+- Original expense amounts and currencies are preserved.
 
 ## Primary Objects
 
 ### Trip
 
-- `id`: internal stable ID.
-- `editTokenHash`: hashed token for edit URL access.
-- `readTokenHash`: optional hashed token for read-only URL access.
+- `id`: private URL token.
 - `name`: display name.
-- `defaultCurrency`: ISO 4217 code, such as `EUR`, `SGD`, or `USD`.
+- `currency`: default trip currency.
+- `version`: optimistic concurrency version.
 - `createdAt`.
 - `updatedAt`.
-- `archivedAt`: optional.
 
 ### Participant
 
-- `id`.
+- `id`: stable trip-local ID.
 - `tripId`.
-- `name`.
+- `name`: displayed exactly as entered.
+- `position`: display order.
 - `createdAt`.
-- `isActive`.
+- `updatedAt`.
 
 ### Expense
 
 - `id`.
 - `tripId`.
 - `description`.
-- `expenseDate`: date used for FX.
-- `paidByParticipantId`.
-- `originalAmountMinor`: amount in the expense currency's minor units.
-- `originalCurrency`: ISO 4217 code.
-- `tripCurrencyAtCreation`: the trip default currency when the expense was created.
-- `convertedAmountMinor`: amount converted into current trip default currency for calculations.
-- `fxRateId`.
-- `fxRateValue`.
-- `fxRateSource`.
-- `fxRateDate`.
-- `manualFxOverride`: boolean.
+- `amountMinor`: original amount in minor units.
+- `currency`: original expense currency.
+- `payerId`.
+- `date`: date used for FX.
+- `fx`: stored conversion details, or `null` while awaiting rates.
 - `createdAt`.
 - `updatedAt`.
-- `deletedAt`: optional soft delete.
 
 ### Expense Split
 
-- `id`.
+- `tripId`.
 - `expenseId`.
 - `participantId`.
-- `shareNumerator`: default `1`.
-- `shareDenominator`: optional later.
-- `convertedShareMinor`: calculated and stored or derived consistently.
+- `position`.
 
-For v1, equal split is enough. The split table still keeps the model ready for unequal splits later without redesigning currency handling.
+Equal split is the only supported split mode today. The split table keeps the model ready for unequal splits later.
 
 ### FX Rate
 
-- `id`.
-- `baseCurrency`.
-- `quoteCurrency`.
-- `rateDate`.
+- `requestedDate`.
+- `fromCurrency`.
+- `toCurrency`.
 - `rate`.
+- `providerDate`.
 - `source`.
-- `createdAt`.
 
-Rates should be cached by `baseCurrency`, `quoteCurrency`, and `rateDate`.
+Rates are cached by date and currency pair.
 
-## Currency Design
+## Currency Rules
 
-### Key Rule
+- Every expense keeps its original currency forever.
+- Dashboard totals, balances, and settlement suggestions use the trip currency.
+- Same-currency ledger rows show one amount.
+- Foreign-currency ledger rows show original amount and converted amount.
+- FX uses the expense date, not today's date unless the expense date is today.
+- If FX lookup fails, the expense is saved as awaiting FX rates and excluded from totals until retry succeeds.
+- FX rates are not user-editable.
+- Changing the trip currency recalculates displayed totals from original expense amounts.
 
-Expenses keep their own original currency forever. Changing the trip default currency changes how totals and balances are displayed and calculated, not what was originally spent.
+## Screen Flow
 
-### Expense Entry
+### Create/Open
 
-When a user enters an expense:
+Purpose: create a trip or open an existing private trip link.
 
-1. User enters amount and currency.
-2. User picks expense date.
-3. App fetches FX rate from expense currency to trip default currency for that date.
-4. App stores:
-   - Original amount.
-   - Original currency.
-   - FX date.
-   - FX rate.
-   - Converted amount in trip default currency.
-5. Balances update using converted amount.
-
-### Changing Trip Default Currency
-
-If the trip default currency changes from `EUR` to `SGD`:
-
-- Do not change original expense amount or original expense currency.
-- Recompute converted values from original currencies into `SGD`.
-- Use each expense's expense date for daily FX.
-- Store the new conversion basis or calculate from cached rates.
-- Show a clear confirmation:
-  - "This changes totals and balances to SGD. Original expense currencies stay unchanged."
-
-### FX Failure States
-
-- If FX lookup fails during expense entry:
-  - Show "Could not fetch FX for this date."
-  - Offer retry.
-  - Offer manual rate entry in an advanced row.
-  - Do not silently use today's rate.
-- If FX lookup fails during trip currency change:
-  - Block the change until missing rates are available or manually filled.
-  - Show the list of missing date/currency pairs.
-
-### Display Rules
-
-- Dashboard totals: trip default currency only.
-- Ledger row: original amount first, converted amount second only when different.
-- Example: `Taxi - €48.00 -> S$69.84`.
-- Expense edit: show full FX details in a compact disclosure.
-- CSV export: include both original and converted values.
-
-## Information Architecture
-
-### Public Create/Open Page
-
-Purpose: create a trip or open an existing trip link.
-
-Sections:
+Key elements:
 
 - Product name.
 - Create trip form.
-- Short privacy/access note.
-
-No marketing-heavy landing page. The app should start with the task.
+- Existing trip link form.
+- Product preview.
+- Short private-link note.
 
 ### Trip Dashboard
 
-Purpose: understand current state and add expenses.
+Purpose: understand the current state and add expenses.
 
-Primary sections:
+Key elements:
 
-- Header:
-  - Trip name.
-  - Default currency.
-  - Share button.
-  - Settings button.
-- Summary:
-  - Total spent in trip currency.
-  - Number of expenses.
-  - Participants.
-- Primary action:
-  - Add expense.
-- Balances:
-  - Participant balances in trip currency.
-  - Copy summary.
-- Settle up:
-  - Suggested payments.
-- Ledger:
-  - Expense list.
-  - Download CSV.
+- Header with trip name, share action, and settings action.
+- Metrics for total counted, people, and awaiting FX rates when nonzero.
+- Add/edit expense form.
+- Balances.
+- Suggested settlements.
+- Ledger with 10 expenses per page.
+- CSV and summary export actions.
 
 ### Add/Edit Expense
-
-Purpose: fast entry, especially on mobile.
 
 Fields:
 
@@ -191,10 +124,10 @@ Fields:
 
 Defaults:
 
-- Currency defaults to trip default currency.
+- Currency defaults to the trip currency.
 - Date defaults to today.
 - Split defaults to everyone.
-- Paid by can default to the last local participant used on the device.
+- Names retain user-entered casing.
 
 ### Settings
 
@@ -203,270 +136,40 @@ Purpose: low-frequency trip management.
 Fields/actions:
 
 - Rename trip.
-- Change default currency.
+- Change trip currency.
 - Edit participants.
-- Copy edit link.
-- Create/copy read-only link later.
-- Archive trip later.
+- Copy trip link.
 
-Settings must be clearly separated from daily expense entry.
+Settings stay out of the main dashboard so daily expense entry remains compact.
 
-## Mobile Screen Designs
+## Access Model
 
-These are structural wireframes, not final visuals.
+- The private URL is the access key.
+- There is no account recovery because there are no accounts.
+- Losing the link means losing normal access.
+- Sharing the link gives edit access.
+- Read-only links are deferred.
 
-### Create Trip
+## Persistence
 
-```text
-Trip Split
+Production state is stored in Neon Postgres through Vercel:
 
-Trip name
-[ Summer in Italy        ]
+- `trips`
+- `participants`
+- `expenses`
+- `expense_splits`
+- `fx_rates`
 
-Default currency
-[ EUR v ]
-
-Participants
-[ Gautam                 ]
-[ Jaya                   ]
-[ Add another person     ]
-
-[ Create trip ]
-
-Private link. No accounts.
-Anyone with the edit link can update this trip.
-```
-
-### Trip Dashboard
-
-```text
-Italy 2026                         [Share] [Settings]
-Default currency: EUR
-
-Total spent
-€1,248.38
-
-[ Add expense ]
-
-Balances                         [Copy summary]
-Gautam                         +€84.20
-Jaya                           -€84.20
-
-Settle up
-Jaya pays Gautam                €84.20
-
-Ledger                          [Download CSV]
-Dinner                          €72.00
-Paid by Gautam · split 2 ways
-
-Taxi                            S$32.50 -> €22.18
-Paid by Jaya · split 2 ways
-```
-
-### Add Expense
-
-```text
-Add expense
-
-Description
-[ Dinner                         ]
-
-Amount
-[ 72.00                 ] [ EUR v ]
-
-Date
-[ Today v ]
-
-Paid by
-[ Gautam v ]
-
-Split between
-[x] Gautam
-[x] Jaya
-[ ] Vikram
-
-FX
-EUR -> EUR
-
-[ Save expense ]
-```
-
-### Add Foreign Currency Expense
-
-```text
-Add expense
-
-Description
-[ Taxi                           ]
-
-Amount
-[ 32.50                 ] [ SGD v ]
-
-Date
-[ 23 Jun 2026 v ]
-
-Paid by
-[ Jaya v ]
-
-Split between
-[x] Gautam
-[x] Jaya
-
-FX
-SGD -> EUR on 23 Jun 2026
-1 SGD = 0.6825 EUR
-Converted total: €22.18
-
-[ Save expense ]
-```
-
-### Change Trip Currency
-
-```text
-Change default currency
-
-Current: EUR
-New:     [ SGD v ]
-
-This changes totals, balances, settlements, and exports to SGD.
-Original expense amounts stay unchanged.
-
-The app will convert each expense using FX for its expense date.
-
-[ Cancel ] [ Change to SGD ]
-```
-
-### FX Missing State
-
-```text
-FX rate needed
-
-Could not fetch SGD -> EUR for 23 Jun 2026.
-
-[ Retry ]
-
-Advanced
-Manual rate
-[ 0.6825 ]
-
-[ Save with manual rate ]
-```
-
-## Desktop Layout
-
-Desktop should not become a different product. It should show the same information with more breathing room:
-
-- Left column: Add expense.
-- Middle column: Balances and settle-up.
-- Right or lower section: Ledger.
-- Header remains compact.
-- Settings opens as a modal or dedicated simple page.
-
-## Interaction Details
-
-### Add Expense Flow
-
-1. Open trip URL.
-2. Tap Add expense.
-3. Enter description and amount.
-4. Confirm currency and date.
-5. Choose payer.
-6. Confirm split participants.
-7. Save.
-8. Dashboard updates without losing scroll context.
-
-### Edit Expense Flow
-
-1. Tap ledger row.
-2. Edit fields.
-3. If amount, currency, or date changes, FX is refreshed.
-4. Save.
-5. Show updated balance.
-
-### Delete Expense Flow
-
-1. Open expense.
-2. Tap Delete.
-3. Confirm.
-4. Soft-delete the expense.
-5. Recalculate balances.
-
-### Share Flow
-
-1. Tap Share.
-2. Copy edit link.
-3. Optional later: copy read-only link.
-4. Show warning: "Anyone with the edit link can update this trip."
-
-## Data Safety Rules
-
-- Never clear a trip as part of UI edits.
-- Never test with a live trip URL unless explicitly requested.
-- All migrations require timestamped backup first.
-- All production writes should be targeted and reversible.
-- Keep current live JSON backups until database migration is complete and verified.
-
-## API Design Sketch
-
-- `POST /api/trips`
-  - Creates trip and returns edit URL.
-- `GET /api/trips/:token`
-  - Fetches trip by edit or read token.
-- `PATCH /api/trips/:token`
-  - Renames trip or changes default currency.
-- `POST /api/trips/:token/participants`
-  - Adds participant.
-- `PATCH /api/trips/:token/participants/:id`
-  - Renames/deactivates participant.
-- `POST /api/trips/:token/expenses`
-  - Adds expense.
-- `PATCH /api/trips/:token/expenses/:id`
-  - Edits expense.
-- `DELETE /api/trips/:token/expenses/:id`
-  - Soft-deletes expense.
-- `GET /api/fx?base=SGD&quote=EUR&date=2026-06-23`
-  - Fetches or returns cached FX rate.
-- `GET /api/trips/:token/export.csv`
-  - Downloads ledger CSV.
-
-## CSV Export Design
-
-Columns:
-
-- Expense date.
-- Description.
-- Paid by.
-- Split with.
-- Original amount.
-- Original currency.
-- Trip amount.
-- Trip currency.
-- FX date.
-- FX rate.
-- FX source.
-- Manual FX override.
-- Created at.
-- Updated at.
+The frontend still talks to `/api/state`; the API hides the persistence details.
 
 ## Acceptance Criteria
 
-- A new user can create and share a trip in under one minute.
-- A participant can add a normal same-currency expense in under 20 seconds.
-- A participant can add a foreign-currency expense without understanding FX mechanics.
-- Changing trip currency does not mutate original expenses.
-- Ledger always shows enough currency detail to audit totals.
-- CSV export can recreate the calculation basis.
-- Two users adding expenses at the same time do not overwrite each other.
-- Live data is backed up before any migration or production data operation.
-
-## First Implementation Slice
-
-The best first build slice is:
-
-1. Stabilize current app with tests and deployment hygiene.
-2. Add doc-backed data model for multi-currency.
-3. Add redesigned dashboard and add-expense flow.
-4. Add original currency plus FX conversion.
-5. Add CSV with FX audit columns.
-6. Move persistence to a safer backend.
-
+- Create a trip and open it by private URL.
+- Add, edit, and delete same-currency expenses.
+- Add foreign-currency expenses and store the FX rate used.
+- Show awaiting FX rates only when there are pending expenses.
+- Preserve original currency and amount in exports.
+- Paginate ledger after 10 expenses.
+- Keep settings separate from the dashboard.
+- Reject stale writes using version checks.
+- Load the production active trip from Postgres.

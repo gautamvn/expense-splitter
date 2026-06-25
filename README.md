@@ -1,81 +1,108 @@
 # Trip Split
 
-Trip Split is a small shared trip expense web app. The current implementation uses private high-entropy trip links with Postgres-backed state.
+Trip Split is a private-link expense splitter for friend trips. Create a trip, share the URL, add expenses in multiple currencies, and see balances plus suggested settlement payments.
 
-This repository also contains product and design specs for evolving it into a minimal, robust, no-account shared trip expense app with proper multi-currency support.
+Production: https://trip-split-delta-five.vercel.app
 
-## Current App
+## What It Does
+
+- Creates high-entropy private trip URLs; there are no accounts or passwords.
+- Lets anyone with the trip link add, edit, and delete expenses.
+- Stores expenses with original amount, original currency, date, payer, and split participants.
+- Converts foreign-currency expenses into the trip currency using daily Frankfurter rates.
+- Stores the exact FX rate used for each expense.
+- Keeps expenses awaiting rates out of totals until FX lookup succeeds.
+- Shows balances and suggested settlement payments in the trip currency.
+- Exports the ledger as CSV with original amount, converted amount, currency, FX date, and FX rate.
+
+## Current Architecture
 
 - Static frontend in `public/`.
-- Vercel serverless state API in `api/state.js`.
-- Postgres persistence helpers and schema bootstrapping in `api/db.js`.
-- Vercel serverless FX API in `api/fx.js`.
-- One-time Blob-to-Postgres import script in `scripts/migrate-blob-to-postgres.mjs`.
-- Vercel routing in `vercel.json`.
-- Currency-aware math in `public/trip-math.js`.
+- Vercel serverless APIs in `api/`.
+- Postgres persistence through Neon, connected via Vercel Marketplace.
+- Schema and persistence helpers in `api/db.js`.
+- FX lookup and cache API in `api/fx.js`.
+- Shared balance, settlement, and currency math in `public/trip-math.js`.
+- One-time legacy Blob import script in `scripts/migrate-blob-to-postgres.mjs`.
 
-## Implemented Robustness
+## Data Model
 
-- Trips receive random private URLs instead of human-chosen identifiers.
-- Password-based trip lookup is deprecated; trips open only through private links.
-- Expenses store original amount, original currency, date, payer, split participants, and the exact FX rate used.
-- FX rates are fetched through Frankfurter (`api.frankfurter.dev`) and cached in Vercel Blob by date and currency pair.
-- If FX lookup fails, the expense is marked as awaiting FX rates and excluded from balances until retry succeeds.
-- FX rates are not user-editable.
-- Trip default currency changes recalculate displayed totals from original amounts without rewriting them.
-- Server writes validate and sanitize payloads.
-- State writes use a version check to catch stale browser tabs before overwriting newer data.
-- Trip state is stored in normalized Postgres tables: trips, participants, expenses, expense splits, and FX rates.
-- CSV export includes original amount/currency, converted amount, trip currency, FX date, and FX rate.
-- Settlement payments are suggested and copyable, not tracked as paid.
+Production data is stored in normalized Postgres tables:
 
-## Safety Notes
+- `trips`
+- `participants`
+- `expenses`
+- `expense_splits`
+- `fx_rates`
 
-- Do not commit `.env*`, `.vercel/`, `backups/`, `node_modules/`, database dumps, or live trip JSON.
-- Treat production trip data as live user data.
-- Before any migration or production data operation, take a fresh timestamped backup.
-- The current production trip was originally stored in Vercel Blob. Use the migration script once after `DATABASE_URL` is connected.
+The active trip was migrated from Vercel Blob into Postgres on June 24, 2026. The app no longer reads or writes trip state through Blob.
 
 ## Local Development
 
-Run tests:
+Install dependencies:
+
+```sh
+npm install
+```
+
+Run unit tests:
 
 ```sh
 npm test
 ```
 
-Run DB-backed integration tests after connecting Neon/Postgres:
+Run DB-backed integration tests with a local or Vercel-pulled `DATABASE_URL`:
 
 ```sh
-DATABASE_URL="postgres://..." npm test
+set -a; . ./.env.local; set +a; npm test
 ```
 
-Import the current active Blob trip into Postgres:
-
-```sh
-npm run db:migrate:blob
-```
-
-Run a quick static UI smoke test without Vercel APIs:
+Run a static local UI smoke test without Vercel APIs:
 
 ```sh
 npm run dev:local
 ```
 
-Open `http://localhost:4173/?local=1`. This uses localStorage and skips the remote API.
+Open:
 
-## Documents
+```text
+http://localhost:4173/?local=1
+```
 
-- `ROBUST_WEBSITE_PLAN.md` - product scope, multi-currency/FX requirements, robustness plan, phases, and open decisions.
-- `END_TO_END_DESIGN.md` - target UX, screen flows, wireframes, data rules, API sketch, and acceptance criteria.
-- `DESIGN_SYSTEM.md` - visual principles, tokens, components, and layout rules for the public UI.
+That local mode uses `localStorage` and skips the remote APIs.
 
-## Current Product Direction
+## Deployment
 
-- Unique private URL per trip.
-- No user accounts.
-- Minimal friend-group workflow.
-- Multi-currency expense entry with daily FX conversion into the trip default currency.
-- Original expense currencies and amounts are preserved forever.
-- Unequal splits, read-only links, settlement tracking, and archiving are intentionally deferred.
-- No notes, attachments, or receipt uploads.
+The app is deployed on Vercel. Required production environment variables:
+
+- `DATABASE_URL`
+- `BLOB_READ_WRITE_TOKEN` only for legacy import/cleanup tooling
+
+Production release checklist:
+
+1. Run tests.
+2. Verify the active trip loads against Postgres.
+3. Verify `/api/fx` returns either a cached or fresh Frankfurter rate.
+4. Deploy through Vercel/GitHub.
+5. Smoke-test the public production URL.
+
+## Safety Notes
+
+- Do not commit `.env*`, `.vercel/`, `backups/`, `node_modules/`, database dumps, or live trip JSON.
+- Treat production trip data as live user data.
+- The private URL is the access key. Anyone with the trip link can edit the trip.
+- Trip pages and APIs set `noindex`; trips are not meant to be discoverable.
+- The remaining legacy Blob copy should be removed once rollback through Blob is no longer needed.
+
+## Product Direction
+
+- Keep the workflow account-free and friend-group focused.
+- Keep settlement payments suggested/copyable, not tracked as paid.
+- Keep FX rates system-managed, not user-editable.
+- Defer read-only links, unequal splits, archive flows, notes, attachments, and receipt uploads until the core shared-trip workflow needs them.
+
+## Docs
+
+- `DESIGN_SYSTEM.md` - product UI rules, tokens, and reusable component guidance.
+- `END_TO_END_DESIGN.md` - current product behavior and screen flow.
+- `ROBUST_WEBSITE_PLAN.md` - completed hardening work plus remaining roadmap.
