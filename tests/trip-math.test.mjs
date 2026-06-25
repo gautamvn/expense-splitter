@@ -7,6 +7,7 @@ import {
   calculateTotalMinor,
   convertedAmountMinor,
   formatMoney,
+  orderPeopleByBalance,
   toMinorUnits,
 } from "../public/trip-math.js";
 
@@ -106,4 +107,18 @@ test("formats currencies using minor unit rules", () => {
   assert.equal(toMinorUnits(12.345, "SGD"), 1235);
   assert.equal(toMinorUnits(1200.4, "JPY"), 1200);
   assert.equal(formatMoney(-1235, "SGD", { signed: true }), "-S$12.35");
+});
+
+test("orders people from owing most to being owed most", () => {
+  assert.deepEqual(
+    orderPeopleByBalance(people, { g: 4500, j: -1500, v: -3000 }).map((person) => person.id),
+    ["v", "j", "g"],
+  );
+});
+
+test("preserves participant order when balances are effectively tied", () => {
+  assert.deepEqual(
+    orderPeopleByBalance(people, { g: 0.2, j: 0, v: -0.2 }).map((person) => person.id),
+    ["g", "j", "v"],
+  );
 });

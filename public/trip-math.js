@@ -114,6 +114,15 @@ export function calculateBalances(state) {
   return balances;
 }
 
+export function orderPeopleByBalance(people, balances) {
+  const list = Array.isArray(people) ? people : [];
+  const originalPositions = new Map(list.map((person, index) => [person.id, index]));
+  return [...list].sort((a, b) => {
+    const difference = (Number(balances?.[a.id]) || 0) - (Number(balances?.[b.id]) || 0);
+    return Math.abs(difference) > 0.5 ? difference : originalPositions.get(a.id) - originalPositions.get(b.id);
+  });
+}
+
 export function calculateSettlements(balances) {
   const debtors = [];
   const creditors = [];
