@@ -978,9 +978,11 @@ fieldset {
 }
 
 .expense-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: 12px;
+  row-gap: 0;
   padding: 13px 2px;
   border-bottom: 1px solid #f4ecdd;
 }
@@ -1009,8 +1011,7 @@ fieldset {
 }
 
 .expense-main {
-  flex: 1;
-  min-width: 0;
+  display: contents;
 }
 
 .expense-title-line {
@@ -1018,6 +1019,8 @@ fieldset {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+  grid-column: 2;
+  grid-row: 1;
 }
 
 .expense-title {
@@ -1026,8 +1029,10 @@ fieldset {
 }
 
 .expense-amount {
+  grid-column: 3;
+  grid-row: 2;
+  margin-top: 7px;
   text-align: right;
-  flex: none;
 }
 
 .expense-amount-value {
@@ -1041,12 +1046,73 @@ fieldset {
 }
 
 .expense-meta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
   font-size: 12px;
   color: var(--subtle);
-  margin-top: 2px;
+  margin-top: 5px;
+  white-space: nowrap;
+}
+
+.expense-payer {
+  display: inline-flex;
+  align-items: center;
+  max-width: 45%;
+  min-height: 25px;
+  padding: 0 9px;
+  border-radius: 8px;
+  background: #eaf3ec;
+  color: var(--positive);
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.expense-split-label {
+  color: var(--subtle);
+  font-weight: 700;
+}
+
+.expense-facepile {
+  display: inline-flex;
+  align-items: center;
+  padding-left: 3px;
+}
+
+.expense-facepile-avatar.avatar {
+  width: 23px;
+  height: 23px;
+  margin-left: -6px;
+  border: 2px solid #fffdf9;
+  font-size: 9px;
+}
+
+.expense-facepile-avatar.avatar:first-child {
+  margin-left: 0;
+}
+
+.expense-facepile-more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 23px;
+  height: 23px;
+  margin-left: -6px;
+  border: 2px solid #fffdf9;
+  border-radius: 50%;
+  background: #efe5d6;
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 800;
 }
 
 .expense-submeta {
+  grid-column: 2;
+  grid-row: 3;
   font-size: 11px;
   font-weight: 700;
   color: #5e8b7e;
@@ -1055,20 +1121,23 @@ fieldset {
 
 .row-actions {
   display: flex;
+  justify-content: flex-end;
   gap: 6px;
-  margin-top: 8px;
+  grid-column: 3;
+  grid-row: 1;
+  margin-top: 0;
 }
 
 .edit-expense {
-  min-height: 34px;
-  padding: 0 12px;
-  font-size: 13px;
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
   border-radius: 9px;
 }
 
 .delete-expense {
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   border-radius: 9px;
   background: #fae9e6;
   color: var(--negative);
@@ -1113,7 +1182,4 @@ fieldset {
     align-items: center;
   }
 
-  .row-actions {
-    margin-top: 0;
-  }
 }

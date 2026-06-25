@@ -567,12 +567,16 @@ function renderExpenses() {
             <span class="expense-title"></span>
             <span class="status-chip expense-fx-chip"></span>
           </div>
-          <div class="expense-meta"></div>
-          <div class="expense-submeta"></div>
           <div class="row-actions">
             <button class="secondary-button edit-expense" type="button">Edit</button>
-            <button class="delete-expense" type="button" title="Delete expense">×</button>
+            <button class="delete-expense" type="button" title="Delete expense" aria-label="Delete expense">×</button>
           </div>
+          <div class="expense-meta">
+            <span class="expense-payer"></span>
+            <span class="expense-split-label"></span>
+            <span class="expense-facepile" aria-label="Split participants"></span>
+          </div>
+          <div class="expense-submeta"></div>
         </div>
         <div class="expense-amount">
           <div class="expense-amount-value"></div>
@@ -580,7 +584,27 @@ function renderExpenses() {
       `;
       row.querySelector(".ccy-badge").textContent = currencyFor(expense.currency).symbol;
       row.querySelector(".expense-title").textContent = expense.description;
-      row.querySelector(".expense-meta").textContent = `${personName(expense.payerId)} paid · split ${expense.splitWith.length}`;
+      row.querySelector(".expense-payer").textContent = `Paid by ${personName(expense.payerId)}`;
+      row.querySelector(".expense-split-label").textContent =
+        `Split ${expense.splitWith.length} way${expense.splitWith.length === 1 ? "" : "s"}`;
+      const facepile = row.querySelector(".expense-facepile");
+      facepile.setAttribute("aria-label", `Split between ${expense.splitWith.map(personName).join(", ")}`);
+      for (const personId of expense.splitWith.slice(0, 5)) {
+        const person = state.people.find((item) => item.id === personId);
+        if (!person) continue;
+        const avatar = avatarFor(person);
+        avatar.classList.add("expense-facepile-avatar");
+        avatar.title = person.name;
+        avatar.setAttribute("aria-hidden", "true");
+        facepile.append(avatar);
+      }
+      if (expense.splitWith.length > 5) {
+        const remainder = document.createElement("span");
+        remainder.className = "expense-facepile-more";
+        remainder.setAttribute("aria-hidden", "true");
+        remainder.textContent = `+${expense.splitWith.length - 5}`;
+        facepile.append(remainder);
+      }
       row.querySelector(".expense-fx-chip").textContent = convertedText;
       const amountEl = row.querySelector(".expense-amount-value");
       amountEl.textContent = convertedMinor === null ? "—" : formatMoney(convertedMinor, state.currency);
