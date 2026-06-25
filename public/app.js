@@ -10,6 +10,7 @@ import {
   formatMoney,
   fromMinorUnits,
   normalizeCurrencyCode,
+  orderPeopleByBalance,
   toMinorUnits,
 } from "./trip-math.js";
 
@@ -63,6 +64,7 @@ const els = {
   expenseCurrencySelect: document.querySelector("#expenseCurrencySelect"),
   expenseDateInput: document.querySelector("#expenseDateInput"),
   payerSelect: document.querySelector("#payerSelect"),
+  payerSuggestion: document.querySelector("#payerSuggestion"),
   splitWithList: document.querySelector("#splitWithList"),
   balancesList: document.querySelector("#balancesList"),
   settlementsList: document.querySelector("#settlementsList"),
@@ -403,17 +405,39 @@ function calculateSettlements(balances) {
   return calculateSettlementsForBalances(balances);
 }
 
-function renderPeople() {
+function peopleByBalance(balances) {
+  return orderPeopleByBalance(state.people, balances);
+}
+
+function suggestedPayers(balances) {
+  return peopleByBalance(balances).filter((person) => (balances[person.id] || 0) < -0.5).slice(0, 3);
+}
+
+function renderPeople(balances) {
   els.payerSelect.replaceChildren();
   els.splitWithList.replaceChildren();
   els.peopleEditor.replaceChildren();
 
-  for (const person of state.people) {
+  const orderedPeople = peopleByBalance(balances);
+  const suggestions = suggestedPayers(balances);
+  const strongestSuggestion = suggestions[0];
+
+  for (const person of orderedPeople) {
     const option = document.createElement("option");
     option.value = person.id;
-    option.textContent = person.name;
+    option.textContent = person.id === strongestSuggestion?.id ? `${person.name} — owes most` : person.name;
     els.payerSelect.append(option);
+  }
 
+  if (strongestSuggestion) {
+    els.payerSuggestion.textContent = `↑ ${strongestSuggestion.name} owes the most — maybe they get this one.`;
+    els.payerSuggestion.classList.remove("hidden");
+  } else {
+    els.payerSuggestion.classList.add("hidden");
+    els.payerSuggestion.textContent = "";
+  }
+
+  for (const person of state.people) {
     const label = document.createElement("label");
     label.className = "check-pill";
     label.innerHTML = `<input type="checkbox" value="${person.id}" checked /> <span></span>`;
@@ -431,19 +455,22 @@ function renderPeople() {
   els.expenseForm.querySelector("button[type='submit']").disabled = state.people.length < 2;
 }
 
-function renderBalances() {
-  const balances = calculateBalances();
+function renderBalances(balances) {
   els.balancesList.replaceChildren();
 
   if (state.people.length === 0) {
     els.balancesList.append(emptyState("Balances appear after people are added."));
-    return balances;
+    return;
   }
 
-  for (const person of state.people) {
+  const suggestions = suggestedPayers(balances);
+  const suggestionRanks = new Map(suggestions.map((person, index) => [person.id, index]));
+
+  for (const person of peopleByBalance(balances)) {
     const balance = balances[person.id] || 0;
+    const suggestionRank = suggestionRanks.get(person.id);
     const row = document.createElement("div");
-    row.className = "balance-row";
+    row.className = `balance-row${suggestionRank !== undefined ? " suggested-payer" : ""}`;
     row.innerHTML = `
       <div class="row-person">
         <div>
@@ -451,14 +478,18 @@ function renderBalances() {
           <span class="row-caption">${balance >= 0 ? "gets back" : "owes"}</span>
         </div>
       </div>
+      <span class="next-payer-prompt hidden"></span>
       <strong class="balance-value ${balance >= 0 ? "positive" : "negative"}">${formatMoney(balance, state.currency, { signed: true })}</strong>
     `;
     row.querySelector(".person-name").textContent = person.name;
     row.querySelector(".row-person").prepend(avatarFor(person));
+    if (suggestionRank !== undefined) {
+      const prompt = row.querySelector(".next-payer-prompt");
+      prompt.textContent = suggestionRank === 0 ? "← Best next payer" : "← Maybe next";
+      prompt.classList.remove("hidden");
+    }
     els.balancesList.append(row);
   }
-
-  return balances;
 }
 
 function renderSettlements(balances) {
@@ -652,8 +683,9 @@ function renderExpenseForm() {
 
 function render() {
   renderSummary();
-  renderPeople();
-  const balances = renderBalances();
+  const balances = calculateBalances();
+  renderPeople(balances);
+  renderBalances(balances);
   renderSettlements(balances);
   renderExpenses();
   renderExpenseForm();
@@ -747,7 +779,7 @@ function balanceLines() {
   return [
     `${state.name} balances`,
     pending ? `Awaiting FX rates: ${pending} expense${pending === 1 ? "" : "s"} excluded from balances` : "",
-    ...state.people.map((person) => `${person.name}: ${formatMoney(balances[person.id] || 0, state.currency, { signed: true })}`),
+    ...peopleByBalance(balances).map((person) => `${person.name}: ${formatMoney(balances[person.id] || 0, state.currency, { signed: true })}`),
   ].filter(Boolean);
 }
 

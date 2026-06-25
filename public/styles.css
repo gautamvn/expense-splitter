@@ -797,6 +797,14 @@ fieldset {
   color: var(--subtle);
 }
 
+.payer-suggestion {
+  display: block;
+  margin-top: 2px;
+  color: var(--amber-dark);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 /* balances */
 .balance-list,
 .settlement-list,
@@ -809,6 +817,14 @@ fieldset {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-height: 40px;
+}
+
+.balance-row.suggested-payer {
+  margin: 0 -8px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  background: #fff7e8;
 }
 
 .row-person {
@@ -830,6 +846,15 @@ fieldset {
   font-size: 12px;
   font-weight: 600;
   color: var(--subtle);
+}
+
+.next-payer-prompt {
+  flex: none;
+  color: var(--amber-dark);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 
 .balance-value {
