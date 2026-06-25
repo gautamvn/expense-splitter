@@ -46,8 +46,6 @@ const els = {
   switchTripButton: document.querySelector("#switchTripButton"),
   copyLinkButton: document.querySelector("#copyLinkButton"),
   tripTitle: document.querySelector("#tripTitle"),
-  tripTotal: document.querySelector("#tripTotal"),
-  tripAvatars: document.querySelector("#tripAvatars"),
   statusText: document.querySelector("#statusText"),
   summaryGrid: document.querySelector(".summary-grid"),
   dashboardView: document.querySelector("#dashboardView"),
@@ -110,10 +108,6 @@ function avatarFor(person) {
   span.style.background = colorFor(person?.id);
   span.textContent = initialFor(person?.name);
   return span;
-}
-
-function renderTripAvatars() {
-  els.tripAvatars.replaceChildren(...state.people.slice(0, 5).map((person) => avatarFor(person)));
 }
 
 function today() {
@@ -568,11 +562,9 @@ function renderExpenses() {
 function renderSummary() {
   const pending = state.expenses.filter((expense) => expenseStatus(expense, state.currency) === "fx_pending").length;
   els.tripTitle.textContent = state.name || "Trip";
-  els.tripTotal.textContent = formatMoney(calculateTotalMinor(state), state.currency);
   const peopleCount = state.people.length;
   const expenseCount = state.expenses.length;
-  els.statusText.textContent = `${peopleCount} ${peopleCount === 1 ? "traveler" : "travelers"} · ${expenseCount} expense${expenseCount === 1 ? "" : "s"}`;
-  renderTripAvatars();
+  els.statusText.textContent = `${formatMoney(calculateTotalMinor(state), state.currency)} · ${peopleCount} ${peopleCount === 1 ? "person" : "people"} · ${expenseCount} expense${expenseCount === 1 ? "" : "s"}`;
   els.pendingCount.textContent = pending;
   els.summaryGrid.classList.toggle("hidden", pending === 0);
   els.pendingMetric.classList.toggle("hidden", pending === 0);
