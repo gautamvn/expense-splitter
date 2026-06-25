@@ -3,97 +3,141 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#FFF8EE" />
     <meta name="robots" content="noindex, nofollow" />
     <title>Trip Split</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Hanken+Grotesque:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <main class="app-shell">
-      <section id="tripGate" class="gate-panel" aria-label="Choose trip">
-        <div class="gate-shell">
-          <div class="gate-copy">
-            <p class="eyebrow">Trip Split</p>
-            <h1>Shared Travel Expenses, Settled Cleanly</h1>
-            <p class="lead">Create a private trip link, add expenses in any supported currency, and see who owes whom without accounts or spreadsheet theatre.</p>
-            <div class="trust-strip" aria-label="Product highlights">
-              <span>Private link</span>
-              <span>Daily FX</span>
-              <span>No signups</span>
+      <!-- ============================ GATE ============================ -->
+      <section id="tripGate" class="gate" aria-label="Choose trip">
+        <header class="brand">
+          <span class="brand-sun" aria-hidden="true"></span>
+          <span class="brand-name">Trip Split</span>
+        </header>
+
+        <div class="hero">
+          <p class="eyebrow">No accounts · just the trip</p>
+          <h1 class="hero-title">Split the trip,<br />not the friendship.</h1>
+          <p class="lead">
+            Add expenses in any currency. We do the exchange rates and tell you exactly who owes
+            whom — down to the cent.
+          </p>
+        </div>
+
+        <aside class="postcard" aria-label="Trip Split preview">
+          <div class="postcard-sky">
+            <span class="postcard-sun" aria-hidden="true"></span>
+            <span class="postcard-place">Bali · weekend</span>
+            <span class="postcard-stamp">SGD<br />set</span>
+          </div>
+          <div class="postcard-body">
+            <div class="postcard-total-row">
+              <div>
+                <span class="micro-label">Total counted</span>
+                <strong class="postcard-total">S$1,248.40</strong>
+              </div>
+              <div class="avatar-stack">
+                <span class="avatar" style="background:#E8902A">G</span>
+                <span class="avatar" style="background:#D9533C">J</span>
+                <span class="avatar" style="background:#A9742F">M</span>
+                <span class="avatar" style="background:#C77D52">T</span>
+              </div>
+            </div>
+            <div class="postcard-next">
+              <span class="postcard-next-mark" aria-hidden="true"></span>
+              <div>
+                <span class="micro-label">Next payment</span>
+                <strong>Theo → Jaya · S$86.20</strong>
+              </div>
             </div>
           </div>
+        </aside>
 
-          <aside class="preview-panel" aria-label="Trip Split preview">
-            <div class="preview-header">
-              <span>Bali weekend</span>
-              <strong>S$1,248.40</strong>
-            </div>
-            <div class="preview-bars" aria-hidden="true">
-              <span style="--bar: 78%"></span>
-              <span style="--bar: 42%"></span>
-              <span style="--bar: 58%"></span>
-            </div>
-            <div class="preview-row">
-              <span>Dinner · EUR 144.00</span>
-              <strong>Ready</strong>
-            </div>
-            <div class="preview-row">
-              <span>Hotel · SGD 820.00</span>
-              <strong>Split 4 ways</strong>
-            </div>
-            <div class="preview-settle">
-              <span>Next payment</span>
-              <strong>Jaya pays Gautam S$86.20</strong>
-            </div>
-          </aside>
-        </div>
+        <form id="createTripForm" class="card trip-form">
+          <div class="kicker">Start a trip</div>
+          <h2 class="card-title">Create a trip</h2>
+          <label class="field">
+            <span>Trip name</span>
+            <input id="createTripName" autocomplete="off" placeholder="Bali weekend" required />
+          </label>
+          <label class="field">
+            <span>Default currency</span>
+            <select id="createCurrency" required></select>
+          </label>
+          <label class="field">
+            <span>Travelers</span>
+            <textarea
+              id="createParticipants"
+              placeholder="One name per line or comma-separated"
+              required
+            ></textarea>
+          </label>
+          <button type="submit" class="primary-button">Create private link →</button>
+        </form>
 
-        <div class="trip-forms" aria-label="Trip access">
-          <form id="createTripForm" class="panel trip-form">
-            <div class="panel-kicker">Start</div>
-            <h2>Create a trip</h2>
-            <label class="field">
-              <span>Trip name</span>
-              <input id="createTripName" autocomplete="off" placeholder="Bali weekend" required />
-            </label>
-            <label class="field">
-              <span>Default currency</span>
-              <select id="createCurrency" required></select>
-            </label>
-            <label class="field">
-              <span>Participants</span>
-              <textarea id="createParticipants" placeholder="One name per line or comma-separated" required></textarea>
-            </label>
-            <button type="submit" class="primary-button">Create private link</button>
-          </form>
+        <form id="openTripForm" class="open-card">
+          <div class="open-copy">
+            <div class="kicker">Return</div>
+            <strong>Got a link?</strong>
+            <p class="form-note">Paste it to open an existing trip. Password trips are deprecated.</p>
+          </div>
+          <label class="field">
+            <span>Trip link</span>
+            <input id="openTripInput" autocomplete="off" placeholder="Paste a trip link" required />
+          </label>
+          <button type="submit" class="secondary-button">Open trip</button>
+        </form>
 
-          <form id="openTripForm" class="panel trip-form compact">
-            <div class="panel-kicker">Return</div>
-            <h2>Open a trip</h2>
-            <label class="field">
-              <span>Trip link</span>
-              <input id="openTripInput" autocomplete="off" placeholder="Paste a trip link" required />
-            </label>
-            <button type="submit" class="secondary-button">Open trip</button>
-            <p class="form-note">Trips open with their private link. Password-based trips are deprecated.</p>
-          </form>
-        </div>
+        <p class="key-note">
+          <span class="key-dot" aria-hidden="true"></span>
+          Your link is the key. Anyone with it can add expenses.
+        </p>
       </section>
 
+      <!-- ============================ TRIP APP ============================ -->
       <div id="tripApp" class="hidden">
-        <section class="topbar app-header" aria-label="Trip summary">
-          <div>
-            <p class="eyebrow">Trip Split</p>
-            <h1 id="tripTitle">Trip</h1>
-            <p id="statusText" class="trip-badge"></p>
+        <section class="trip-hero" aria-label="Trip summary">
+          <div class="trip-hero-top">
+            <button id="switchTripButton" class="ghost-button" type="button">‹ All trips</button>
+            <div class="hero-actions">
+              <button id="copyLinkButton" class="chip-button" type="button">
+                <span class="button-label">Copy link</span>
+              </button>
+              <button
+                id="openSettingsButton"
+                class="chip-button icon"
+                type="button"
+                aria-label="Open trip settings"
+                title="Trip settings"
+              >
+                ⚙
+              </button>
+            </div>
           </div>
-          <div class="top-actions">
-            <button id="copyLinkButton" class="secondary-button" type="button">Copy link</button>
-            <button id="openSettingsButton" class="icon-button" type="button" aria-label="Open trip settings" title="Trip settings">⚙</button>
-            <button id="switchTripButton" class="secondary-button" type="button">Switch trip</button>
-          </div>
+          <p class="trip-eyebrow">Bali · weekend</p>
+          <h1 id="tripTitle">Trip</h1>
         </section>
 
         <div id="dashboardView">
+          <div class="total-card">
+            <div>
+              <span class="micro-label">Total counted</span>
+              <strong id="tripTotal">S$0.00</strong>
+            </div>
+            <div class="total-meta">
+              <div id="tripAvatars" class="avatar-stack"></div>
+              <span id="statusText" class="trip-badge"></span>
+            </div>
+          </div>
+
           <section class="summary-grid hidden" aria-label="Current totals">
             <article id="pendingMetric" class="metric hidden">
               <span>Awaiting FX rates</span>
@@ -103,17 +147,23 @@
 
           <section id="pendingFxPanel" class="notice hidden">
             <strong>Awaiting FX rates</strong>
-            <span>Expenses without rates stay in the ledger but are left out of balances until retry succeeds.</span>
+            <span
+              >Expenses without rates stay in the ledger but are left out of balances until retry
+              succeeds.</span
+            >
             <button id="retryFxButton" class="secondary-button" type="button">Retry</button>
           </section>
 
           <section class="workspace">
-            <div class="panel expense-panel">
-              <div class="panel-heading">
-                <div>
-                  <h2 id="expenseFormTitle">Add expense</h2>
+            <div class="card expense-card">
+              <div class="card-heading">
+                <div class="card-heading-left">
+                  <span class="plus-badge" aria-hidden="true">+</span>
+                  <h2 id="expenseFormTitle" class="card-title">Add expense</h2>
                 </div>
-                <button id="cancelEditButton" class="secondary-button hidden" type="button">Cancel edit</button>
+                <button id="cancelEditButton" class="secondary-button small hidden" type="button">
+                  Cancel
+                </button>
               </div>
               <form id="expenseForm" class="expense-form">
                 <label class="field">
@@ -123,7 +173,15 @@
                 <div class="form-row three">
                   <label class="field">
                     <span>Amount</span>
-                    <input id="amountInput" inputmode="decimal" placeholder="0.00" min="0.01" step="0.01" type="number" required />
+                    <input
+                      id="amountInput"
+                      inputmode="decimal"
+                      placeholder="0.00"
+                      min="0.01"
+                      step="0.01"
+                      type="number"
+                      required
+                    />
                   </label>
                   <label class="field">
                     <span>Currency</span>
@@ -146,12 +204,10 @@
               </form>
             </div>
 
-            <div class="panel">
-              <div class="panel-heading">
-                <div>
-                  <h2>Balances</h2>
-                </div>
-                <button id="copyBalancesButton" class="secondary-button icon-text-button" type="button" data-label="Copy">
+            <div class="card">
+              <div class="card-heading">
+                <h2 class="card-title">Where everyone stands</h2>
+                <button id="copyBalancesButton" class="icon-text-button" type="button">
                   <svg aria-hidden="true" viewBox="0 0 24 24">
                     <rect x="9" y="9" width="11" height="11" rx="2"></rect>
                     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -162,12 +218,13 @@
               <div id="balancesList" class="balance-list"></div>
             </div>
 
-            <div class="panel">
-              <div class="panel-heading">
+            <div class="card settle-card">
+              <div class="card-heading">
                 <div>
-                  <h2>Settle up</h2>
+                  <h2 class="card-title">Settle up</h2>
+                  <p class="card-sub">A few payments clear the whole trip.</p>
                 </div>
-                <button id="copySettlementsButton" class="secondary-button icon-text-button" type="button" data-label="Copy">
+                <button id="copySettlementsButton" class="icon-text-button" type="button">
                   <svg aria-hidden="true" viewBox="0 0 24 24">
                     <rect x="9" y="9" width="11" height="11" rx="2"></rect>
                     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -179,37 +236,35 @@
             </div>
           </section>
 
-          <section class="ledger-section">
-            <div class="panel-heading">
-              <div>
-                <h2>Ledger</h2>
-              </div>
-              <button id="downloadCsvButton" class="secondary-button icon-text-button" type="button">
+          <section class="card ledger-card">
+            <div class="card-heading">
+              <h2 class="card-title">Ledger</h2>
+              <button id="downloadCsvButton" class="icon-text-button" type="button">
                 <svg aria-hidden="true" viewBox="0 0 24 24">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                   <path d="M7 10l5 5 5-5"></path>
                   <path d="M12 15V3"></path>
                 </svg>
-                <span>Download</span>
+                <span class="button-label">CSV</span>
               </button>
             </div>
             <div id="expenseList" class="expense-list"></div>
             <nav id="ledgerPagination" class="pagination hidden" aria-label="Ledger pagination">
-              <button id="previousExpensesButton" class="secondary-button" type="button">Previous</button>
+              <button id="previousExpensesButton" class="secondary-button small" type="button">Previous</button>
               <span id="ledgerPageText"></span>
-              <button id="nextExpensesButton" class="secondary-button" type="button">Next</button>
+              <button id="nextExpensesButton" class="secondary-button small" type="button">Next</button>
             </nav>
           </section>
         </div>
 
         <section id="settingsView" class="settings-view hidden">
-          <div class="panel">
-            <div class="panel-heading">
+          <div class="card">
+            <div class="card-heading">
               <div>
-                <div class="panel-kicker">Trip</div>
-                <h2>Settings</h2>
+                <div class="kicker">Trip</div>
+                <h2 class="card-title">Settings</h2>
               </div>
-              <button id="backToDashboardButton" class="secondary-button" type="button">Back</button>
+              <button id="backToDashboardButton" class="secondary-button small" type="button">Back</button>
             </div>
             <form id="settingsForm" class="settings-form">
               <label class="field">

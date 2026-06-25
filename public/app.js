@@ -46,6 +46,8 @@ const els = {
   switchTripButton: document.querySelector("#switchTripButton"),
   copyLinkButton: document.querySelector("#copyLinkButton"),
   tripTitle: document.querySelector("#tripTitle"),
+  tripTotal: document.querySelector("#tripTotal"),
+  tripAvatars: document.querySelector("#tripAvatars"),
   statusText: document.querySelector("#statusText"),
   summaryGrid: document.querySelector(".summary-grid"),
   dashboardView: document.querySelector("#dashboardView"),
@@ -87,6 +89,31 @@ const els = {
 
 function uid() {
   return crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+}
+
+const AVATAR_COLORS = ["#E8902A", "#D9533C", "#A9742F", "#C77D52", "#B5803A", "#C2552F", "#9C6B3F", "#D98236"];
+
+function initialFor(name) {
+  return (name || "?").trim().charAt(0).toUpperCase() || "?";
+}
+
+function colorFor(id) {
+  const text = String(id);
+  let hash = 0;
+  for (let i = 0; i < text.length; i += 1) hash = (hash * 31 + text.charCodeAt(i)) >>> 0;
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length];
+}
+
+function avatarFor(person) {
+  const span = document.createElement("span");
+  span.className = "avatar";
+  span.style.background = colorFor(person?.id);
+  span.textContent = initialFor(person?.name);
+  return span;
+}
+
+function renderTripAvatars() {
+  els.tripAvatars.replaceChildren(...state.people.slice(0, 5).map((person) => avatarFor(person)));
 }
 
 function today() {
@@ -418,13 +445,16 @@ function renderBalances() {
     const row = document.createElement("div");
     row.className = "balance-row";
     row.innerHTML = `
-      <div>
-        <span class="person-name"></span>
-        <span class="row-caption">${balance >= 0 ? "is owed" : "owes"}</span>
+      <div class="row-person">
+        <div>
+          <span class="person-name"></span>
+          <span class="row-caption">${balance >= 0 ? "gets back" : "owes"}</span>
+        </div>
       </div>
       <strong class="balance-value ${balance >= 0 ? "positive" : "negative"}">${formatMoney(balance, state.currency, { signed: true })}</strong>
     `;
     row.querySelector(".person-name").textContent = person.name;
+    row.querySelector(".row-person").prepend(avatarFor(person));
     els.balancesList.append(row);
   }
 
@@ -441,17 +471,20 @@ function renderSettlements(balances) {
   }
 
   for (const settlement of settlements) {
+    const fromPerson = state.people.find((person) => person.id === settlement.from);
+    const toPerson = state.people.find((person) => person.id === settlement.to);
     const row = document.createElement("div");
     row.className = "settlement-row";
     row.innerHTML = `
-      <div>
-        <span><strong></strong> pays <strong></strong></span>
-      </div>
+      <span class="settle-arrow">→</span>
+      <span class="settle-text"><strong></strong> pays <strong></strong></span>
       <strong class="settlement-amount">${formatMoney(settlement.amount, state.currency)}</strong>
     `;
-    const names = row.querySelectorAll("strong");
+    const names = row.querySelectorAll(".settle-text strong");
     names[0].textContent = personName(settlement.from);
     names[1].textContent = personName(settlement.to);
+    row.prepend(avatarFor(toPerson));
+    row.prepend(avatarFor(fromPerson));
     els.settlementsList.append(row);
   }
 }
@@ -487,27 +520,35 @@ function renderExpenses() {
           ? originalText
           : `${originalText} -> ${formatMoney(convertedMinor, state.currency)}`;
     const fxText = expense.currency === state.currency ? "" : expense.fx ? `FX ${expense.fx.date || expense.date} @ ${Number(expense.fx.rate).toFixed(6)}` : "Awaiting FX rates";
+    const isForeign = expense.currency !== state.currency;
 
     row.innerHTML = `
-      <div>
+      <span class="ccy-badge ${isForeign ? "foreign" : ""}"></span>
+      <div class="expense-main">
         <div class="expense-title-line">
           <span class="expense-title"></span>
           <span class="status-chip expense-fx-chip"></span>
         </div>
         <div class="expense-meta"></div>
         <div class="expense-submeta"></div>
+        <div class="row-actions">
+          <button class="secondary-button edit-expense" type="button">Edit</button>
+          <button class="delete-expense" type="button" title="Delete expense">×</button>
+        </div>
       </div>
-      <div class="row-actions">
-        <button class="secondary-button edit-expense" type="button">Edit</button>
-        <button class="delete-expense" type="button" title="Delete expense">×</button>
+      <div class="expense-amount">
+        <div class="expense-amount-value"></div>
       </div>
     `;
+    row.querySelector(".ccy-badge").textContent = currencyFor(expense.currency).symbol;
     row.querySelector(".expense-title").textContent = expense.description;
-    row.querySelector(".expense-meta").textContent = `${expense.date} · paid by ${personName(expense.payerId)} · split: ${splitNames}`;
+    row.querySelector(".expense-meta").textContent = `${expense.date} · ${personName(expense.payerId)} paid · split ${expense.splitWith.length}`;
     row.querySelector(".expense-fx-chip").textContent = convertedText;
+    const amountEl = row.querySelector(".expense-amount-value");
+    amountEl.textContent = convertedMinor === null ? "—" : formatMoney(convertedMinor, state.currency);
     const submeta = row.querySelector(".expense-submeta");
-    submeta.textContent = fxText;
-    submeta.classList.toggle("hidden", !fxText);
+    submeta.textContent = isForeign ? `${formatMoney(expense.amountMinor, expense.currency)} · ${fxText}` : "";
+    submeta.classList.toggle("hidden", !isForeign);
     row.querySelector(".edit-expense").addEventListener("click", () => startEditExpense(expense.id));
     row.querySelector(".delete-expense").addEventListener("click", async () => {
       if (!confirm(`Delete "${expense.description}"?`)) return;
@@ -527,7 +568,11 @@ function renderExpenses() {
 function renderSummary() {
   const pending = state.expenses.filter((expense) => expenseStatus(expense, state.currency) === "fx_pending").length;
   els.tripTitle.textContent = state.name || "Trip";
-  els.statusText.textContent = `${formatMoney(calculateTotalMinor(state), state.currency)} · ${state.people.length} ${state.people.length === 1 ? "person" : "people"} · ${state.expenses.length} expense${state.expenses.length === 1 ? "" : "s"}`;
+  els.tripTotal.textContent = formatMoney(calculateTotalMinor(state), state.currency);
+  const peopleCount = state.people.length;
+  const expenseCount = state.expenses.length;
+  els.statusText.textContent = `${peopleCount} ${peopleCount === 1 ? "traveler" : "travelers"} · ${expenseCount} expense${expenseCount === 1 ? "" : "s"}`;
+  renderTripAvatars();
   els.pendingCount.textContent = pending;
   els.summaryGrid.classList.toggle("hidden", pending === 0);
   els.pendingMetric.classList.toggle("hidden", pending === 0);
