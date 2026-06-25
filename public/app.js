@@ -567,16 +567,16 @@ function renderExpenses() {
             <span class="expense-title"></span>
             <span class="status-chip expense-fx-chip"></span>
           </div>
+          <div class="row-actions">
+            <button class="secondary-button edit-expense" type="button">Edit</button>
+            <button class="delete-expense" type="button" title="Delete expense" aria-label="Delete expense">×</button>
+          </div>
           <div class="expense-meta">
             <span class="expense-payer"></span>
             <span class="expense-split-label"></span>
             <span class="expense-facepile" aria-label="Split participants"></span>
           </div>
           <div class="expense-submeta"></div>
-          <div class="row-actions">
-            <button class="secondary-button edit-expense" type="button">Edit</button>
-            <button class="delete-expense" type="button" title="Delete expense">×</button>
-          </div>
         </div>
         <div class="expense-amount">
           <div class="expense-amount-value"></div>
