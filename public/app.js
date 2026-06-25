@@ -15,7 +15,6 @@ import {
 
 const STORAGE_KEY = "trip-split-state-v2";
 const TRIP_KEY = "trip-split-active-trip-v2";
-const EXPENSES_PER_PAGE = 10;
 
 const defaultState = {
   schemaVersion: 2,
@@ -30,8 +29,8 @@ let state = structuredClone(defaultState);
 let tripId = null;
 let editingExpenseId = null;
 let isSaving = false;
-let expensePage = 1;
 let activeView = "dashboard";
+const expandedLedgerDates = new Set();
 const useRemoteState = location.protocol.startsWith("http") && !new URLSearchParams(location.search).has("local");
 
 const els = {
@@ -68,10 +67,6 @@ const els = {
   balancesList: document.querySelector("#balancesList"),
   settlementsList: document.querySelector("#settlementsList"),
   expenseList: document.querySelector("#expenseList"),
-  ledgerPagination: document.querySelector("#ledgerPagination"),
-  ledgerPageText: document.querySelector("#ledgerPageText"),
-  previousExpensesButton: document.querySelector("#previousExpensesButton"),
-  nextExpensesButton: document.querySelector("#nextExpensesButton"),
   pendingCount: document.querySelector("#pendingCount"),
   copyBalancesButton: document.querySelector("#copyBalancesButton"),
   copySettlementsButton: document.querySelector("#copySettlementsButton"),
@@ -112,6 +107,17 @@ function avatarFor(person) {
 
 function today() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function displayDate(date) {
+  const parsed = new Date(`${date}T12:00:00`);
+  if (Number.isNaN(parsed.getTime())) return date;
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(parsed);
 }
 
 function localStorageKey(id = tripId) {
@@ -299,7 +305,7 @@ async function openTrip(value) {
 function showTripGate() {
   tripId = null;
   editingExpenseId = null;
-  expensePage = 1;
+  expandedLedgerDates.clear();
   activeView = "dashboard";
   state = structuredClone(defaultState);
   localStorage.removeItem(TRIP_KEY);
@@ -488,7 +494,6 @@ function renderExpenses() {
 
   if (state.expenses.length === 0) {
     els.expenseList.append(emptyState("No expenses logged yet."));
-    els.ledgerPagination.classList.add("hidden");
     return;
   }
 
@@ -497,66 +502,103 @@ function renderExpenses() {
     if (byDate !== 0) return byDate;
     return String(b.createdAt || "").localeCompare(String(a.createdAt || ""));
   });
-  const pageCount = Math.max(1, Math.ceil(sortedExpenses.length / EXPENSES_PER_PAGE));
-  expensePage = Math.min(Math.max(expensePage, 1), pageCount);
-  const pageExpenses = sortedExpenses.slice((expensePage - 1) * EXPENSES_PER_PAGE, expensePage * EXPENSES_PER_PAGE);
-
-  for (const expense of pageExpenses) {
-    const row = document.createElement("article");
-    row.className = "expense-row";
-    const convertedMinor = convertedAmountMinor(expense, state.currency);
-    const splitNames = expense.splitWith.map(personName).join(", ");
-    const originalText = formatMoney(expense.amountMinor, expense.currency);
-    const convertedText =
-      convertedMinor === null
-        ? "Awaiting FX rates"
-        : expense.currency === state.currency
-          ? originalText
-          : `${originalText} -> ${formatMoney(convertedMinor, state.currency)}`;
-    const fxText = expense.currency === state.currency ? "" : expense.fx ? `FX ${expense.fx.date || expense.date} @ ${Number(expense.fx.rate).toFixed(6)}` : "Awaiting FX rates";
-    const isForeign = expense.currency !== state.currency;
-
-    row.innerHTML = `
-      <span class="ccy-badge ${isForeign ? "foreign" : ""}"></span>
-      <div class="expense-main">
-        <div class="expense-title-line">
-          <span class="expense-title"></span>
-          <span class="status-chip expense-fx-chip"></span>
-        </div>
-        <div class="expense-meta"></div>
-        <div class="expense-submeta"></div>
-        <div class="row-actions">
-          <button class="secondary-button edit-expense" type="button">Edit</button>
-          <button class="delete-expense" type="button" title="Delete expense">×</button>
-        </div>
-      </div>
-      <div class="expense-amount">
-        <div class="expense-amount-value"></div>
-      </div>
-    `;
-    row.querySelector(".ccy-badge").textContent = currencyFor(expense.currency).symbol;
-    row.querySelector(".expense-title").textContent = expense.description;
-    row.querySelector(".expense-meta").textContent = `${expense.date} · ${personName(expense.payerId)} paid · split ${expense.splitWith.length}`;
-    row.querySelector(".expense-fx-chip").textContent = convertedText;
-    const amountEl = row.querySelector(".expense-amount-value");
-    amountEl.textContent = convertedMinor === null ? "—" : formatMoney(convertedMinor, state.currency);
-    const submeta = row.querySelector(".expense-submeta");
-    submeta.textContent = isForeign ? `${formatMoney(expense.amountMinor, expense.currency)} · ${fxText}` : "";
-    submeta.classList.toggle("hidden", !isForeign);
-    row.querySelector(".edit-expense").addEventListener("click", () => startEditExpense(expense.id));
-    row.querySelector(".delete-expense").addEventListener("click", async () => {
-      if (!confirm(`Delete "${expense.description}"?`)) return;
-      state.expenses = state.expenses.filter((item) => item.id !== expense.id);
-      await saveState();
-      render();
-    });
-    els.expenseList.append(row);
+  const expensesByDate = new Map();
+  for (const expense of sortedExpenses) {
+    const date = expense.date || "Undated";
+    const expenses = expensesByDate.get(date) || [];
+    expenses.push(expense);
+    expensesByDate.set(date, expenses);
   }
 
-  els.ledgerPagination.classList.toggle("hidden", pageCount <= 1);
-  els.ledgerPageText.textContent = `Page ${expensePage} of ${pageCount}`;
-  els.previousExpensesButton.disabled = expensePage <= 1;
-  els.nextExpensesButton.disabled = expensePage >= pageCount;
+  for (const [date, expenses] of expensesByDate) {
+    const isExpanded = expandedLedgerDates.has(date);
+    const group = document.createElement("section");
+    group.className = `ledger-day${isExpanded ? " expanded" : ""}`;
+
+    const readyAmounts = expenses.map((expense) => convertedAmountMinor(expense, state.currency));
+    const pendingCount = readyAmounts.filter((amount) => amount === null).length;
+    const dayTotal = readyAmounts.reduce((total, amount) => total + (amount || 0), 0);
+    const chargeLabel = `${expenses.length} charge${expenses.length === 1 ? "" : "s"}`;
+    const pendingLabel = pendingCount ? ` · ${pendingCount} awaiting FX` : "";
+    const panelId = `ledger-day-${date.replaceAll(/[^a-zA-Z0-9_-]/g, "-")}`;
+
+    group.innerHTML = `
+      <button class="ledger-day-toggle" type="button" aria-expanded="${isExpanded}" aria-controls="${panelId}">
+        <span class="ledger-day-icon" aria-hidden="true"></span>
+        <span class="ledger-day-heading">
+          <strong class="ledger-day-date"></strong>
+          <span class="ledger-day-meta">${chargeLabel}${pendingLabel}</span>
+        </span>
+        <strong class="ledger-day-total">${formatMoney(dayTotal, state.currency)}</strong>
+      </button>
+      <div id="${panelId}" class="ledger-day-expenses${isExpanded ? "" : " hidden"}"></div>
+    `;
+
+    group.querySelector(".ledger-day-date").textContent = displayDate(date);
+    const panel = group.querySelector(".ledger-day-expenses");
+    const toggle = group.querySelector(".ledger-day-toggle");
+    toggle.addEventListener("click", () => {
+      if (expandedLedgerDates.has(date)) expandedLedgerDates.delete(date);
+      else expandedLedgerDates.add(date);
+      const expanded = expandedLedgerDates.has(date);
+      group.classList.toggle("expanded", expanded);
+      toggle.setAttribute("aria-expanded", String(expanded));
+      panel.classList.toggle("hidden", !expanded);
+    });
+
+    for (const expense of expenses) {
+      const row = document.createElement("article");
+      row.className = "expense-row";
+      const convertedMinor = convertedAmountMinor(expense, state.currency);
+      const originalText = formatMoney(expense.amountMinor, expense.currency);
+      const convertedText =
+        convertedMinor === null
+          ? "Awaiting FX rates"
+          : expense.currency === state.currency
+            ? originalText
+            : `${originalText} -> ${formatMoney(convertedMinor, state.currency)}`;
+      const fxText = expense.currency === state.currency ? "" : expense.fx ? `FX ${expense.fx.date || expense.date} @ ${Number(expense.fx.rate).toFixed(6)}` : "Awaiting FX rates";
+      const isForeign = expense.currency !== state.currency;
+
+      row.innerHTML = `
+        <span class="ccy-badge ${isForeign ? "foreign" : ""}"></span>
+        <div class="expense-main">
+          <div class="expense-title-line">
+            <span class="expense-title"></span>
+            <span class="status-chip expense-fx-chip"></span>
+          </div>
+          <div class="expense-meta"></div>
+          <div class="expense-submeta"></div>
+          <div class="row-actions">
+            <button class="secondary-button edit-expense" type="button">Edit</button>
+            <button class="delete-expense" type="button" title="Delete expense">×</button>
+          </div>
+        </div>
+        <div class="expense-amount">
+          <div class="expense-amount-value"></div>
+        </div>
+      `;
+      row.querySelector(".ccy-badge").textContent = currencyFor(expense.currency).symbol;
+      row.querySelector(".expense-title").textContent = expense.description;
+      row.querySelector(".expense-meta").textContent = `${personName(expense.payerId)} paid · split ${expense.splitWith.length}`;
+      row.querySelector(".expense-fx-chip").textContent = convertedText;
+      const amountEl = row.querySelector(".expense-amount-value");
+      amountEl.textContent = convertedMinor === null ? "—" : formatMoney(convertedMinor, state.currency);
+      const submeta = row.querySelector(".expense-submeta");
+      submeta.textContent = isForeign ? `${formatMoney(expense.amountMinor, expense.currency)} · ${fxText}` : "";
+      submeta.classList.toggle("hidden", !isForeign);
+      row.querySelector(".edit-expense").addEventListener("click", () => startEditExpense(expense.id));
+      row.querySelector(".delete-expense").addEventListener("click", async () => {
+        if (!confirm(`Delete "${expense.description}"?`)) return;
+        state.expenses = state.expenses.filter((item) => item.id !== expense.id);
+        await saveState();
+        render();
+      });
+      panel.append(row);
+    }
+
+    els.expenseList.append(group);
+  }
 }
 
 function renderSummary() {
@@ -646,8 +688,8 @@ async function upsertExpense() {
     state.expenses = state.expenses.map((item) => (item.id === existing.id ? expense : item));
   } else {
     state.expenses.push(expense);
-    expensePage = 1;
   }
+  expandedLedgerDates.add(expense.date);
 
   await saveState();
   resetExpenseForm();
@@ -752,16 +794,6 @@ els.retryFxButton.addEventListener("click", async () => {
   await refreshAllFx();
   await saveState();
   render();
-});
-
-els.previousExpensesButton.addEventListener("click", () => {
-  expensePage -= 1;
-  renderExpenses();
-});
-
-els.nextExpensesButton.addEventListener("click", () => {
-  expensePage += 1;
-  renderExpenses();
 });
 
 els.copyBalancesButton.addEventListener("click", async () => {

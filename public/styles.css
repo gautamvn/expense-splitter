@@ -892,6 +892,91 @@ fieldset {
   padding-bottom: 12px;
 }
 
+.ledger-day {
+  overflow: hidden;
+  border: 1px solid #efe3d0;
+  border-radius: var(--r-md);
+  background: #fffdf9;
+}
+
+.ledger-day-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  text-align: left;
+  color: var(--ink);
+  background: transparent;
+}
+
+.ledger-day-toggle:hover {
+  background: #fff8ec;
+}
+
+.ledger-day-icon {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--amber-tint);
+  color: var(--amber-dark);
+}
+
+.ledger-day-icon::before,
+.ledger-day-icon::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 12px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  transform: translate(-50%, -50%);
+  transition: transform 0.15s ease;
+}
+
+.ledger-day-icon::after {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
+.ledger-day.expanded .ledger-day-icon::after {
+  transform: translate(-50%, -50%) rotate(0deg);
+}
+
+.ledger-day-heading {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.ledger-day-date {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.ledger-day-meta {
+  margin-top: 2px;
+  color: var(--subtle);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ledger-day-total {
+  flex: none;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ledger-day-expenses {
+  padding: 0 14px 4px;
+  border-top: 1px solid #f1e7d8;
+}
+
 .expense-row {
   display: flex;
   align-items: flex-start;
@@ -900,7 +985,7 @@ fieldset {
   border-bottom: 1px solid #f4ecdd;
 }
 
-.expense-list .expense-row:last-child {
+.ledger-day-expenses .expense-row:last-child {
   border-bottom: 0;
 }
 
@@ -994,17 +1079,6 @@ fieldset {
 
 .delete-expense:hover {
   background: #f6d5cf;
-}
-
-.pagination {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 14px;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 700;
 }
 
 .empty-state {
