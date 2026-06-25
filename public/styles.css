@@ -289,6 +289,23 @@ h2 {
   white-space: nowrap;
 }
 
+.icon-text-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.icon-text-button svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
 .primary-button {
   background: var(--color-brand);
   color: #fff;
@@ -331,12 +348,8 @@ h2 {
 }
 
 .summary-grid {
-  grid-template-columns: minmax(0, 1.45fr) minmax(180px, 0.75fr);
+  grid-template-columns: minmax(220px, 320px);
   margin-bottom: var(--space-4);
-}
-
-.summary-grid.has-pending {
-  grid-template-columns: minmax(0, 1.45fr) minmax(180px, 0.75fr) minmax(180px, 0.75fr);
 }
 
 .metric {
@@ -633,7 +646,6 @@ fieldset {
   .gate-shell,
   .trip-forms,
   .summary-grid,
-  .summary-grid.has-pending,
   .workspace,
   .form-row,
   .form-row.three,

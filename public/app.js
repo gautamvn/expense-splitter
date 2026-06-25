@@ -72,10 +72,9 @@ const els = {
   ledgerPageText: document.querySelector("#ledgerPageText"),
   previousExpensesButton: document.querySelector("#previousExpensesButton"),
   nextExpensesButton: document.querySelector("#nextExpensesButton"),
-  totalSpent: document.querySelector("#totalSpent"),
-  peopleCount: document.querySelector("#peopleCount"),
   pendingCount: document.querySelector("#pendingCount"),
-  copySummaryButton: document.querySelector("#copySummaryButton"),
+  copyBalancesButton: document.querySelector("#copyBalancesButton"),
+  copySettlementsButton: document.querySelector("#copySettlementsButton"),
   downloadCsvButton: document.querySelector("#downloadCsvButton"),
   settingsForm: document.querySelector("#settingsForm"),
   tripNameInput: document.querySelector("#tripNameInput"),
@@ -447,7 +446,6 @@ function renderSettlements(balances) {
     row.innerHTML = `
       <div>
         <span><strong></strong> pays <strong></strong></span>
-        <span class="row-caption">Suggested payment</span>
       </div>
       <strong class="settlement-amount">${formatMoney(settlement.amount, state.currency)}</strong>
     `;
@@ -529,11 +527,9 @@ function renderExpenses() {
 function renderSummary() {
   const pending = state.expenses.filter((expense) => expenseStatus(expense, state.currency) === "fx_pending").length;
   els.tripTitle.textContent = state.name || "Trip";
-  els.statusText.textContent = `${currencyFor(state.currency).code} totals · ${state.expenses.length} expense${state.expenses.length === 1 ? "" : "s"}`;
-  els.totalSpent.textContent = formatMoney(calculateTotalMinor(state), state.currency);
-  els.peopleCount.textContent = state.people.length;
+  els.statusText.textContent = `${formatMoney(calculateTotalMinor(state), state.currency)} · ${state.people.length} ${state.people.length === 1 ? "person" : "people"} · ${state.expenses.length} expense${state.expenses.length === 1 ? "" : "s"}`;
   els.pendingCount.textContent = pending;
-  els.summaryGrid.classList.toggle("has-pending", pending > 0);
+  els.summaryGrid.classList.toggle("hidden", pending === 0);
   els.pendingMetric.classList.toggle("hidden", pending === 0);
   els.pendingFxPanel.classList.toggle("hidden", pending === 0);
   els.tripNameInput.value = state.name || "";
@@ -634,11 +630,32 @@ async function updateSettings() {
 }
 
 function copyButtonFeedback(button, text) {
-  const original = button.textContent;
-  button.textContent = text;
+  const label = button.querySelector(".button-label") || button;
+  const original = label.textContent;
+  label.textContent = text;
   setTimeout(() => {
-    button.textContent = original;
+    label.textContent = original;
   }, 1200);
+}
+
+function balanceLines() {
+  const balances = calculateBalances();
+  const pending = state.expenses.filter((expense) => expenseStatus(expense, state.currency) === "fx_pending").length;
+  return [
+    `${state.name} balances`,
+    pending ? `Awaiting FX rates: ${pending} expense${pending === 1 ? "" : "s"} excluded from balances` : "",
+    ...state.people.map((person) => `${person.name}: ${formatMoney(balances[person.id] || 0, state.currency, { signed: true })}`),
+  ].filter(Boolean);
+}
+
+function settlementLines() {
+  const settlements = calculateSettlements(calculateBalances());
+  return [
+    `${state.name} settle up`,
+    ...(settlements.length
+      ? settlements.map((item) => `${personName(item.from)} pays ${personName(item.to)} ${formatMoney(item.amount, state.currency)}`)
+      : ["Everyone is square."]),
+  ];
 }
 
 els.createTripForm.addEventListener("submit", async (event) => {
@@ -710,26 +727,14 @@ els.nextExpensesButton.addEventListener("click", () => {
   renderExpenses();
 });
 
-els.copySummaryButton.addEventListener("click", async () => {
-  const balances = calculateBalances();
-  const settlements = calculateSettlements(balances);
-  const pending = state.expenses.filter((expense) => expenseStatus(expense, state.currency) === "fx_pending").length;
-  const lines = [
-    `${state.name} summary`,
-    `Total counted: ${formatMoney(calculateTotalMinor(state), state.currency)}`,
-    pending ? `Awaiting FX rates: ${pending} expense${pending === 1 ? "" : "s"} excluded from balances` : "",
-    "",
-    "Balances:",
-    ...state.people.map((person) => `${person.name}: ${formatMoney(balances[person.id] || 0, state.currency, { signed: true })}`),
-    "",
-    "Settle up:",
-    ...(settlements.length
-      ? settlements.map((item) => `${personName(item.from)} pays ${personName(item.to)} ${formatMoney(item.amount, state.currency)}`)
-      : ["Everyone is square."]),
-  ].filter((line, index) => line || index > 1);
+els.copyBalancesButton.addEventListener("click", async () => {
+  await navigator.clipboard.writeText(balanceLines().join("\n"));
+  copyButtonFeedback(els.copyBalancesButton, "Copied");
+});
 
-  await navigator.clipboard.writeText(lines.join("\n"));
-  copyButtonFeedback(els.copySummaryButton, "Copied");
+els.copySettlementsButton.addEventListener("click", async () => {
+  await navigator.clipboard.writeText(settlementLines().join("\n"));
+  copyButtonFeedback(els.copySettlementsButton, "Copied");
 });
 
 els.downloadCsvButton.addEventListener("click", () => {
